@@ -7,8 +7,7 @@ module RailsSimpleEventSourcing
     def call
       return unless @command.valid?
 
-      command_hander = initialize_command_handler
-      command_hander.call
+      initialize_command_handler.call
     end
 
     private
