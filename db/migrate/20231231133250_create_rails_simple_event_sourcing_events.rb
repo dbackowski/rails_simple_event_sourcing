@@ -1,6 +1,6 @@
-class CreateEvents < ActiveRecord::Migration[7.1]
+class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
   def change
-    create_table :events do |t|
+    create_table :rails_simple_event_sourcing_events do |t|
       t.string :type, null: false
       t.string :event_type, null: false
       t.string :aggregate_id

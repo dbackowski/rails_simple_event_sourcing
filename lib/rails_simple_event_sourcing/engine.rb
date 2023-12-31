@@ -5,5 +5,6 @@ require_relative 'apply_with_returning_aggregate'
 
 module RailsSimpleEventSourcing
   class Engine < ::Rails::Engine
+    isolate_namespace RailsSimpleEventSourcing
   end
 end
