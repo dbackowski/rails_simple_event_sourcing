@@ -6,12 +6,12 @@ module RailsSimpleEventSourcing
     before_save :persist_aggregate
     after_initialize :initialize_event
 
-    def self.aggregate_class_name(name)
-      self.singleton_class.instance_variable_set(:@aggregate_class_name, name)
+    def self.aggregate_model_name(name)
+      self.singleton_class.instance_variable_set(:@aggregate_model_name, name)
     end
 
-    def aggregate_class_name
-      self.class.singleton_class.instance_variable_get(:@aggregate_class_name)
+    def aggregate_model_name
+      self.class.singleton_class.instance_variable_get(:@aggregate_model_name)
     end
 
     def self.event_attributes(*attributes)
@@ -55,9 +55,9 @@ module RailsSimpleEventSourcing
     end
 
     def find_or_build_aggregate
-      return aggregate_class_name.find(aggregate_id) if aggregate_id.present?
+      return aggregate_model_name.find(aggregate_id) if aggregate_id.present?
 
-      aggregate_class_name.new
+      aggregate_model_name.new
     end
   end
 end
