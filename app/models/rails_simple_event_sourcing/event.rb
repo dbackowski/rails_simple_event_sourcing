@@ -38,6 +38,16 @@ module RailsSimpleEventSourcing
 
     private
 
+    def event_metadata
+      {
+        request_id: CurrentRequest.request_id,
+        request_user_agent: CurrentRequest.request_user_agent,
+        request_referer: CurrentRequest.request_referer,
+        request_ip: CurrentRequest.request_ip,
+        request_params: CurrentRequest.request_params
+      }
+    end
+
     def initialize_event
       self.class.prepend RailsSimpleEventSourcing::ApplyWithReturningAggregate
       @aggregate = find_or_build_aggregate
@@ -50,6 +60,7 @@ module RailsSimpleEventSourcing
     end
 
     def persist_aggregate
+      self.metadata = event_metadata.compact.presence
       @aggregate.save!
       self.aggregate_id = @aggregate.id
     end
