@@ -1,10 +1,11 @@
 module RailsSimpleEventSourcing
   class Event < ApplicationRecord
-    belongs_to :eventable, polymorphic: true
+    belongs_to :eventable, polymorphic: true, optional: true
 
-    before_validation :apply_on_aggregate
-    before_save :persist_aggregate
     after_initialize :initialize_event
+    before_validation :apply_on_aggregate, if: :aggregate_defined?
+    before_save :add_metadata
+    before_save :persist_aggregate, if: :aggregate_defined?
 
     def self.aggregate_model_name(name)
       self.singleton_class.instance_variable_set(:@aggregate_model_name, name)
@@ -38,6 +39,10 @@ module RailsSimpleEventSourcing
 
     private
 
+    def aggregate_defined?
+      aggregate_model_name.present?
+    end
+
     def event_metadata
       {
         request_id: CurrentRequest.request_id,
@@ -50,7 +55,7 @@ module RailsSimpleEventSourcing
 
     def initialize_event
       self.class.prepend RailsSimpleEventSourcing::ApplyWithReturningAggregate
-      @aggregate = find_or_build_aggregate
+      @aggregate = find_or_build_aggregate if aggregate_defined? && eventable_type.present?
       self.event_type = self.class
       self.eventable = @aggregate
     end
@@ -60,9 +65,12 @@ module RailsSimpleEventSourcing
     end
 
     def persist_aggregate
-      self.metadata = event_metadata.compact.presence
       @aggregate.save!
       self.aggregate_id = @aggregate.id
+    end
+
+    def add_metadata
+      self.metadata = event_metadata.compact.presence
     end
 
     def find_or_build_aggregate

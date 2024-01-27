@@ -3,7 +3,7 @@ module RailsSimpleEventSourcing
     extend ActiveSupport::Concern
 
     included do
-      has_many :events, class_name: 'RailsSimpleEventSourcing::Event', as: :eventable
+      has_many :events, class_name: 'RailsSimpleEventSourcing::Event', as: :eventable, dependent: :nullify
     end
   end
 end
