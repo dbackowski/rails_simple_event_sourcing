@@ -33,7 +33,7 @@ module RailsSimpleEventSourcing
       @event_attributes
     end
 
-    def apply
+    def apply(aggregate)
       raise NotImplementedError
     end
 
@@ -55,7 +55,7 @@ module RailsSimpleEventSourcing
 
     def initialize_event
       self.class.prepend RailsSimpleEventSourcing::ApplyWithReturningAggregate
-      @aggregate = find_or_build_aggregate if aggregate_defined? && eventable_type.present?
+      @aggregate = find_or_build_aggregate if aggregate_defined?
       self.event_type = self.class
       self.eventable = @aggregate
     end
