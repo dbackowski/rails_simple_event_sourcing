@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     rails_simple_event_sourcing (0.1.0)
+      pg (~> 1.1)
       rails (>= 7.1.2)
 
 GEM
@@ -123,6 +124,7 @@ GEM
     nio4r (2.5.9)
     nokogiri (1.15.4-arm64-darwin)
       racc (~> 1.4)
+    pg (1.5.4)
     psych (5.1.1.1)
       stringio
     puma (6.4.0)
