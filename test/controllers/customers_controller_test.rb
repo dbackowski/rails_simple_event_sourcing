@@ -63,4 +63,31 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, customer.events.count
     assert_equal customer.events.last, customer_event
   end
+
+  test 'should delete customer' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe'
+    )
+
+    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    assert_no_changes -> { Customer.count } do
+      assert_changes -> { RailsSimpleEventSourcing::Event.count } do
+        delete customer_url(Customer.last.id), headers: { 'HTTP_REFERER' => 'example.com' }
+      end
+    end
+
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerDeleted")
+    customer = Customer.last
+
+    assert_in_delta customer.deleted_at, customer_event.payload['deleted_at'].to_datetime
+    assert_not_empty customer_event.metadata['request_id']
+    assert_equal '127.0.0.1', customer_event.metadata['request_ip']
+    assert_not_empty customer_event.metadata['request_params']
+    assert_equal 'example.com', customer_event.metadata['request_referer']
+
+    assert_equal 2, customer.events.count
+    assert_equal customer.events.last, customer_event
+  end
 end

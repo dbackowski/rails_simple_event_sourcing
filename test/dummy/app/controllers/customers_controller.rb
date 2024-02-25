@@ -15,4 +15,9 @@ class CustomersController < ApplicationController
     )
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
   end
+
+  def destroy
+    cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
+    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+  end
 end

@@ -16,5 +16,8 @@ default: &default
 # Do not set this db to the same as development or production.
 test:
   <<: *default
-  #database: storage/test.sqlite3
   database: rails_event_sourcing_test_test
+
+development:
+  <<: *default
+  database: rails_event_sourcing_test_development
