@@ -13,6 +13,8 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
       t.index :type
       t.index :event_type
       t.index :aggregate_id
+      t.index :payload, using: :gin
+      t.index :metadata, using: :gin
     end
   end
 end
