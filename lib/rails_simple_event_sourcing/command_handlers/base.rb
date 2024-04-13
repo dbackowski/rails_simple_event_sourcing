@@ -6,7 +6,7 @@ module RailsSimpleEventSourcing
       end
 
       def call
-        raise NotImplementedError
+        raise NoMethodError, "You must implement #{self.class}#call"
       end
     end
   end

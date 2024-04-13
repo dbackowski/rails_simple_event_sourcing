@@ -34,7 +34,7 @@ module RailsSimpleEventSourcing
     end
 
     def apply(aggregate)
-      raise NotImplementedError
+      raise NoMethodError, "You must implement #{self.class}#apply"
     end
 
     private
