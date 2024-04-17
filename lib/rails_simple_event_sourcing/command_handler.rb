@@ -5,7 +5,7 @@ module RailsSimpleEventSourcing
     end
 
     def call
-      return unless @command.valid?
+      return Result.new(success?: false, errors: @command.errors) unless @command.valid?
 
       initialize_command_handler.call
     end
