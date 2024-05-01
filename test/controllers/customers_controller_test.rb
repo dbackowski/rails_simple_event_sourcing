@@ -11,6 +11,16 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
+    response_body = response.parsed_body
+
+    assert_equal 200, response.status
+    assert_not_nil response_body['id']
+    assert_equal 'John', response_body['first_name']
+    assert_equal 'Doe', response_body['last_name']
+    assert_nil response_body['deleted_at']
+    assert_not_empty response_body['created_at']
+    assert_not_empty response_body['updated_at']
+
     customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerCreated")
     customer = Customer.last
 
@@ -45,6 +55,16 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
+    response_body = response.parsed_body
+
+    assert_equal 200, response.status
+    assert_not_nil response_body['id']
+    assert_equal 'John', response_body['first_name']
+    assert_equal 'Rambo', response_body['last_name']
+    assert_nil response_body['deleted_at']
+    assert_not_empty response_body['created_at']
+    assert_not_empty response_body['updated_at']
+
     customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerUpdated")
     customer = Customer.last
 
@@ -77,6 +97,16 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
         delete customer_url(Customer.last.id), headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
+
+    response_body = response.parsed_body
+
+    assert_equal 200, response.status
+    assert_not_nil response_body['id']
+    assert_equal 'John', response_body['first_name']
+    assert_equal 'Doe', response_body['last_name']
+    assert_not_nil response_body['deleted_at']
+    assert_not_nil response_body['created_at']
+    assert_not_nil response_body['updated_at']
 
     customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerDeleted")
     customer = Customer.last

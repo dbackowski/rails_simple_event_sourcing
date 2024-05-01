@@ -5,6 +5,12 @@ class CustomersController < ApplicationController
       last_name: params[:last_name]
     )
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    if handler.success?
+      render json: handler.data
+    else
+      render json: handler.errors, status: :unprocessable_entity
+    end
   end
 
   def update
@@ -14,10 +20,22 @@ class CustomersController < ApplicationController
       last_name: params[:last_name]
     )
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    if handler.success?
+      render json: handler.data
+    else
+      render json: handler.errors, status: :unprocessable_entity
+    end
   end
 
   def destroy
     cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    if handler.success?
+      render json: handler.data
+    else
+      render json: handler.errors, status: :unprocessable_entity
+    end
   end
 end
