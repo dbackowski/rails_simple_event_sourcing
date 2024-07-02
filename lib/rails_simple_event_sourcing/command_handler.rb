@@ -8,6 +8,7 @@ module RailsSimpleEventSourcing
       return Result.new(success?: false, errors: @command.errors) unless @command.valid?
 
       initialize_command_handler.call
+      Result.new(success?: true)
     end
 
     private

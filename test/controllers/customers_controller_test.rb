@@ -47,7 +47,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       first_name: 'John',
       last_name: 'Doe'
     )
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
@@ -89,8 +89,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       first_name: 'John',
       last_name: 'Doe'
     )
-
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
@@ -100,13 +99,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     response_body = response.parsed_body
 
-    assert_equal 200, response.status
-    assert_not_nil response_body['id']
-    assert_equal 'John', response_body['first_name']
-    assert_equal 'Doe', response_body['last_name']
-    assert_not_nil response_body['deleted_at']
-    assert_not_nil response_body['created_at']
-    assert_not_nil response_body['updated_at']
+    assert_equal 204, response.status
+    assert_empty response_body
 
     customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerDeleted")
     customer = Customer.last

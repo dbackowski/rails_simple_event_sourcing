@@ -1,13 +1,15 @@
 class CustomersController < ApplicationController
   def create
     cmd = Customer::Commands::Create.new(
+      aggregate_id: SecureRandom.uuid,
       first_name: params[:first_name],
       last_name: params[:last_name]
     )
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     if handler.success?
-      render json: handler.data
+      customer = Customer.find(cmd.aggregate_id)
+      render json: customer
     else
       render json: handler.errors, status: :unprocessable_entity
     end
@@ -22,7 +24,8 @@ class CustomersController < ApplicationController
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     if handler.success?
-      render json: handler.data
+      customer = Customer.find(cmd.aggregate_id)
+      render json: customer
     else
       render json: handler.errors, status: :unprocessable_entity
     end
@@ -33,7 +36,7 @@ class CustomersController < ApplicationController
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     if handler.success?
-      render json: handler.data
+      head :no_content
     else
       render json: handler.errors, status: :unprocessable_entity
     end
