@@ -74,8 +74,6 @@ module RailsSimpleEventSourcing
     end
 
     def find_or_build_aggregate
-#      return aggregate_model_name.find(aggregate_id) if aggregate_id.present?
-
       aggregate_model_name.first_or_initialize(id: aggregate_id)
     end
   end
