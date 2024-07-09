@@ -7,7 +7,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
-        post customers_url, params: { first_name: 'John', last_name: 'Doe' }, headers: { 'HTTP_REFERER' => 'example.com' }
+        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' }, headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
 
@@ -17,6 +17,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil response_body['id']
     assert_equal 'John', response_body['first_name']
     assert_equal 'Doe', response_body['last_name']
+    assert_equal 'jdoe@example.com', response_body['email']
     assert_nil response_body['deleted_at']
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
@@ -26,6 +27,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal 'John', customer_event.payload['first_name']
     assert_equal 'Doe', customer_event.payload['last_name']
+    assert_equal 'jdoe@example.com', customer_event.payload['email']
     assert_not_empty customer_event.payload['created_at']
     assert_not_empty customer_event.payload['updated_at']
     assert_not_empty customer_event.metadata['request_id']
@@ -42,10 +44,42 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal customer.events.last, customer_event
   end
 
+  test 'should not create another customer with the same email' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
+    )
+
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    assert_no_changes -> { Customer.count } do
+      assert_changes -> { RailsSimpleEventSourcing::Event.count } do
+        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' }, headers: { 'HTTP_REFERER' => 'example.com' }
+      end
+    end
+
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerEmailTaken")
+
+
+    response_body = response.parsed_body
+
+    assert_equal 422, response.status
+    assert_equal ['already taken'], response_body['errors']['email']
+    assert_equal 'John', customer_event.payload['first_name']
+    assert_equal 'Doe', customer_event.payload['last_name']
+    assert_equal 'jdoe@example.com', customer_event.payload['email']
+    assert_not_empty customer_event.metadata['request_id']
+    assert_equal '127.0.0.1', customer_event.metadata['request_ip']
+    assert_not_empty customer_event.metadata['request_params']
+    assert_equal 'example.com', customer_event.metadata['request_referer']
+  end
+
   test 'should update customer' do
     cmd = Customer::Commands::Create.new(
       first_name: 'John',
-      last_name: 'Doe'
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
     )
     RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
@@ -87,7 +121,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
   test 'should delete customer' do
     cmd = Customer::Commands::Create.new(
       first_name: 'John',
-      last_name: 'Doe'
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
     )
     RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 

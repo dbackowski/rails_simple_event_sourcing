@@ -17,9 +17,11 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
   create_table "customers", force: :cascade do |t|
     t.string "first_name", null: false
     t.string "last_name", null: false
+    t.string "email", null: false
     t.datetime "deleted_at", precision: nil
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_customers_on_email", unique: true
   end
 
   create_table "rails_simple_event_sourcing_events", force: :cascade do |t|
@@ -35,6 +37,8 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
     t.index ["aggregate_id"], name: "index_rails_simple_event_sourcing_events_on_aggregate_id"
     t.index ["event_type"], name: "index_rails_simple_event_sourcing_events_on_event_type"
     t.index ["eventable_type", "eventable_id"], name: "index_rails_simple_event_sourcing_events_on_eventable"
+    t.index ["metadata"], name: "index_rails_simple_event_sourcing_events_on_metadata", using: :gin
+    t.index ["payload"], name: "index_rails_simple_event_sourcing_events_on_payload", using: :gin
     t.index ["type"], name: "index_rails_simple_event_sourcing_events_on_type"
   end
 

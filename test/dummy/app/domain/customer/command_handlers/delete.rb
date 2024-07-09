@@ -6,6 +6,8 @@ class Customer
           aggregate_id: @command.aggregate_id,
           deleted_at: Time.zone.now
         )
+
+        RailsSimpleEventSourcing::Result.new(success?: true)
       end
     end
   end

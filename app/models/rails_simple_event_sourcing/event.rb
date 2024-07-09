@@ -66,7 +66,7 @@ module RailsSimpleEventSourcing
 
     def persist_aggregate
       @aggregate.save!
-      #self.aggregate_id = @aggregate.id
+      self.aggregate_id = @aggregate.id
     end
 
     def add_metadata
@@ -74,7 +74,9 @@ module RailsSimpleEventSourcing
     end
 
     def find_or_build_aggregate
-      aggregate_model_name.first_or_initialize(id: aggregate_id)
+      return aggregate_model_name.find(aggregate_id) if aggregate_id.present?
+
+      aggregate_model_name.new
     end
   end
 end
