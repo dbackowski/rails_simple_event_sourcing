@@ -124,6 +124,8 @@ GEM
     nio4r (2.5.9)
     nokogiri (1.15.4-arm64-darwin)
       racc (~> 1.4)
+    nokogiri (1.15.4-x86_64-linux)
+      racc (~> 1.4)
     pg (1.5.4)
     psych (5.1.1.1)
       stringio
@@ -174,6 +176,7 @@ GEM
       io-console (~> 0.5)
     ruby2_keywords (0.0.5)
     sqlite3 (1.6.8-arm64-darwin)
+    sqlite3 (1.6.8-x86_64-linux)
     stringio (3.0.9)
     thor (1.3.0)
     timeout (0.4.1)
@@ -187,6 +190,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-22
+  x86_64-linux
 
 DEPENDENCIES
   puma
@@ -194,4 +198,4 @@ DEPENDENCIES
   sqlite3
 
 BUNDLED WITH
-   2.4.21
+   2.3.26
