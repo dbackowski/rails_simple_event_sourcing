@@ -6,9 +6,7 @@ module RailsSimpleEventSourcing
       has_many :events, class_name: 'RailsSimpleEventSourcing::Event', as: :eventable, dependent: :nullify
 
       def readonly?
-        return false if @write_access_enabled
-
-        true
+        !@write_access_enabled
       end
 
       def enable_write_access!
