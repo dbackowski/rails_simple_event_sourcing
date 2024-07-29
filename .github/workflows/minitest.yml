@@ -7,7 +7,7 @@ jobs:
       postgres:
         image: postgres:11.6-alpine
         env:
-          POSTGRES_PASSWORD: password
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
     steps:
