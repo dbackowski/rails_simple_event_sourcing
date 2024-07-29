@@ -20,4 +20,6 @@ jobs:
       - name: Install dependencies
         run: bundle install
       - name: Run tests
-        run: bundle exec rails test
+        run: |
+          bundle exec rails db:setup
+          bundle exec rails test
