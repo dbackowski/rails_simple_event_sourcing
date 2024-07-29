@@ -12,6 +12,7 @@ AllCops:
     - 'rails_simple_event_sourcing.gemspec'
     - 'test/dummy/**/*'
     - 'Rakefile'
+    - 'vendor/bundle/**/*'
 
 Metrics/BlockLength:
   Exclude:
