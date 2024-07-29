@@ -10,8 +10,8 @@ services:
     volumes:
       - pg:/var/lib/postgresql/data
     expose:
-      - 5432
+      - 5435
     ports:
-      - 5432:5432
+      - 5435:5432
     environment:
       POSTGRES_HOST_AUTH_METHOD: "trust"
