@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsSimpleEventSourcing
   module SetCurrentRequestDetails
     extend ActiveSupport::Concern

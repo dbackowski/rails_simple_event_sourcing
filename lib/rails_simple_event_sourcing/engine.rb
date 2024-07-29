@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'command_handlers/base'
 require_relative 'commands/base'
 require_relative 'command_handler'

@@ -1,13 +1,16 @@
+# frozen_string_literal: true
+
 require 'test_helper'
 
 class CustomersControllerTest < ActionDispatch::IntegrationTest
-  test "should create customer" do
+  test 'should create customer' do
     assert_equal 0, Customer.count
     assert_equal 0, RailsSimpleEventSourcing::Event.count
 
     assert_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
-        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' }, headers: { 'HTTP_REFERER' => 'example.com' }
+        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' },
+                            headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
 
@@ -22,7 +25,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerCreated")
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerCreated')
     customer = Customer.last
 
     assert_equal 'John', customer_event.payload['first_name']
@@ -55,12 +58,12 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
-        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' }, headers: { 'HTTP_REFERER' => 'example.com' }
+        post customers_url, params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' },
+                            headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerEmailTaken")
-
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerEmailTaken')
 
     response_body = response.parsed_body
 
@@ -85,7 +88,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
-        put customer_url(Customer.last.id), params: { first_name: 'John', last_name: 'Rambo' }, headers: { 'HTTP_REFERER' => 'example.com' }
+        put customer_url(Customer.last.id), params: { first_name: 'John', last_name: 'Rambo' },
+                                            headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
 
@@ -99,7 +103,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerUpdated")
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerUpdated')
     customer = Customer.last
 
     assert_equal 'John', customer_event.payload['first_name']
@@ -137,7 +141,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 204, response.status
     assert_empty response_body
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: "Customer::Events::CustomerDeleted")
+    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerDeleted')
     customer = Customer.last
 
     assert_in_delta customer.deleted_at, customer_event.payload['deleted_at'].to_datetime

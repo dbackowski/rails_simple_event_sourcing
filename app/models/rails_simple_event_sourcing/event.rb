@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsSimpleEventSourcing
   class Event < ApplicationRecord
     belongs_to :eventable, polymorphic: true, optional: true
@@ -8,7 +10,7 @@ module RailsSimpleEventSourcing
     before_save :assing_aggregate_id_and_persist_aggregate, if: :aggregate_defined?
 
     def self.aggregate_model_name(name)
-      self.singleton_class.instance_variable_set(:@aggregate_model_name, name)
+      singleton_class.instance_variable_set(:@aggregate_model_name, name)
     end
 
     def aggregate_model_name
@@ -33,7 +35,7 @@ module RailsSimpleEventSourcing
       @event_attributes
     end
 
-    def apply(aggregate)
+    def apply(_aggregate)
       raise NoMethodError, "You must implement #{self.class}#apply"
     end
 

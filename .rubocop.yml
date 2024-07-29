@@ -1,0 +1,27 @@
+require: rubocop-rails
+
+Style/Documentation:
+  Enabled: false
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  Exclude:
+    - 'config/routes.rb'
+    - 'bin/rails'
+    - 'rails_simple_event_sourcing.gemspec'
+    - 'test/dummy/**/*'
+    - 'Rakefile'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'test/controllers/customers_controller_test.rb'
+
+Metrics/ClassLength:
+  Exclude:
+    - 'test/controllers/customers_controller_test.rb'
+
+Metrics/MethodLength:
+  Exclude:
+    - 'app/models/rails_simple_event_sourcing/event.rb'
+    - 'db/migrate/**/*'

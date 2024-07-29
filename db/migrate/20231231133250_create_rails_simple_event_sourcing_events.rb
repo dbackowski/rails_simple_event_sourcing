@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
   def change
     create_table :rails_simple_event_sourcing_events do |t|
