@@ -14,14 +14,14 @@ Let's start with the directory structure:
 
 ```
 app/
-domain/
-│ ├─ customer/
-│ ├─ command_handlers/
-│ │ ├─ create.rb
-│ │ ├─ events/.
-│ │ ├─ customer_created.rb
-│ │ ├─ commands/
-│ │ ├─ create.rb
+├─ domain/
+│  ├─ customer/
+│  │  ├─ command_handlers/
+│  │  │  ├─ create.rb
+│  │  ├─ events/
+│  │  │  ├─ customer_created.rb
+│  │  ├─ commands/
+│  │  │  ├─ create.rb
 ```
 
 The name of the top directory can be different because Rails does not namespace it.
@@ -32,7 +32,7 @@ Command -> Command Handle -> Create Event (which under the hood writes changes t
 
 Explanation of each of these blocks above:
 
-- Command - is responsible for any action you want to take in your system, it is also responsible for validating the input parameters it takes.
+- `Command` - is responsible for any action you want to take in your system, it is also responsible for validating the input parameters it takes.
 
 Example:
 
@@ -50,7 +50,7 @@ class Customer
 end
 ```
 
-- CommandHandler - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, and finally creating a proper event.
+- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, and finally creating a proper event.
 
 Example:
 
@@ -74,7 +74,7 @@ class Customer
 end
 ```
 
-- Event - is responsible for storing immutable data of your actions, you should use past tense for naming events since an event is something that has already happened (e.g. customer was created)
+- `Event` - is responsible for storing immutable data of your actions, you should use past tense for naming events since an event is something that has already happened (e.g. customer was created)
 
 Example:
 
@@ -99,8 +99,8 @@ end
 ```
 
 In the example above:
-- aggregate_model_name is used for the corresponding model (each model is normally set to read-only mode since the only way to modify it should be via events), this param is optional since you can have an event that is not applied to the model, e.g. UserLoginAlreadyTaken
-- event_attributes - defines params that will be stored in the event and these params will be available to apply to the model via the `apply(aggregate)` method (where aggregate is an instance of your model passed in aggregate_model_name).
+- `aggregate_model_name` is used for the corresponding model (each model is normally set to read-only mode since the only way to modify it should be via events), this param is optional since you can have an event that is not applied to the model, e.g. UserLoginAlreadyTaken
+- `event_attributes` - defines params that will be stored in the event and these params will be available to apply to the model via the `apply(aggregate)` method (where aggregate is an instance of your model passed in aggregate_model_name).
 
 Here is an example of a custom controller that uses all the blocks described above:
 
