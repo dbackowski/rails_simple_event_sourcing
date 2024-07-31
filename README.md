@@ -32,7 +32,7 @@ Command -> Command Handle -> Create Event (which under the hood writes changes t
 
 Explanation of each of these blocks above:
 
-- `Command` - is responsible for any action you want to take in your system, it is also responsible for validating the input parameters it takes.
+- `Command` - is responsible for any action you want to take in your system, it is also responsible for validating the input parameters it takes (you can use the same validations you would normally use in models).
 
 Example:
 
@@ -50,7 +50,12 @@ class Customer
 end
 ```
 
-- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, and finally creating a proper event.
+- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, and finally creating a proper event. This should always return the `RailsSimpleEventSourcing::Result` struct.
+
+This struct has 3 keywords:
+- `success?:` true/false (whether everything went ok, commands are automatically validated, but still there may be some API call here, etc., so you can return false if some API call failed)
+- `data:` data that you want to return eg. to the controller (in the example above the `event.eventable` will return a proper instance of the Customer model)
+- `errors:` in a scenario when you set success?: false you can also return here some errors related to this (see: `test/dummy/app/domain/customer/command_handlers/create.rb` for an example)
 
 Example:
 
