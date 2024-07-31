@@ -6,6 +6,10 @@ This is a very minimalist implementation of an event sourcing pattern, if you wa
 
 I wanted to learn how to build this from scratch and also wanted to build something that would be very easy to use since most of the fully featured frameworks like the two above require a lot of configuration and learning.
 
+### Important notice
+
+This plugin will only work with Postgres database because it uses JSONB data type which is only supported by this database.
+
 ## Usage
 
 So how does it all work?
