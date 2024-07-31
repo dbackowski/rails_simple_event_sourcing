@@ -28,7 +28,7 @@ The name of the top directory can be different because Rails does not namespace 
 
 Based on the example above, the usage looks like this
 
-Command -> Command Handle -> Create Event (which under the hood writes changes to the appropriate model)
+Command -> Command Handler -> Create Event (which under the hood writes changes to the appropriate model)
 
 Explanation of each of these blocks above:
 
