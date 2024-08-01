@@ -2,9 +2,12 @@
 
 module RailsSimpleEventSourcing
   class Event < ApplicationRecord
+    include ReadOnly
+
     belongs_to :eventable, polymorphic: true, optional: true
 
     after_initialize :initialize_event
+    before_validation :enable_write_access_on_self, if: :new_record?
     before_validation :apply_on_aggregate, if: :aggregate_defined?
     before_save :add_metadata
     before_save :assing_aggregate_id_and_persist_aggregate, if: :aggregate_defined?
@@ -60,6 +63,10 @@ module RailsSimpleEventSourcing
       @aggregate = find_or_build_aggregate if aggregate_defined?
       self.event_type = self.class
       self.eventable = @aggregate
+    end
+
+    def enable_write_access_on_self
+      enable_write_access!
     end
 
     def apply_on_aggregate
