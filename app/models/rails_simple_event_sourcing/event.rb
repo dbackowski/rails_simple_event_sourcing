@@ -84,7 +84,7 @@ module RailsSimpleEventSourcing
     end
 
     def find_or_build_aggregate
-      return aggregate_model_name.find(aggregate_id) if aggregate_id.present?
+      return aggregate_model_name.find(aggregate_id).lock! if aggregate_id.present?
 
       aggregate_model_name.new
     end
