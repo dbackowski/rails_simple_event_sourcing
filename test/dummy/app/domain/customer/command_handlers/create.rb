@@ -10,7 +10,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        RailsSimpleEventSourcing::Result.new(success?: true, data: event.eventable)
+        RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
       rescue ActiveRecord::RecordNotUnique
         event = Customer::Events::CustomerEmailTaken.create(
           first_name: @command.first_name,

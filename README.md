@@ -58,7 +58,7 @@ end
 
 This struct has 3 keywords:
 - `success?:` true/false (whether everything went ok, commands are automatically validated, but still there may be some API call here, etc., so you can return false if some API call failed)
-- `data:` data that you want to return eg. to the controller (in the example above the `event.eventable` will return a proper instance of the Customer model)
+- `data:` data that you want to return eg. to the controller (in the example above the `event.aggregate` will return a proper instance of the Customer model)
 - `errors:` in a scenario when you set success?: false you can also return here some errors related to this (see: `test/dummy/app/domain/customer/command_handlers/create.rb` for an example)
 
 Example:
@@ -76,7 +76,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        RailsSimpleEventSourcing::Result.new(success?: true, data: event.eventable)
+        RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
       end
     end
   end

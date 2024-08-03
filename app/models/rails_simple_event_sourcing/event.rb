@@ -6,6 +6,8 @@ module RailsSimpleEventSourcing
 
     belongs_to :eventable, polymorphic: true, optional: true
 
+    alias aggregate eventable
+
     after_initialize :initialize_event
     before_validation :enable_write_access_on_self, if: :new_record?
     before_validation :apply_on_aggregate, if: :aggregate_defined?
