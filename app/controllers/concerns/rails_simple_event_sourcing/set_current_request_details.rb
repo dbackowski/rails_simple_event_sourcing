@@ -5,14 +5,22 @@ module RailsSimpleEventSourcing
     extend ActiveSupport::Concern
 
     included do
-      before_action do
+      before_action :set_event_metadata
+
+      def set_event_metadata
+        CurrentRequest.metadata = event_metadata
+      end
+
+      def event_metadata
         parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
 
-        CurrentRequest.request_id = request.uuid
-        CurrentRequest.request_user_agent = request.user_agent
-        CurrentRequest.request_referer = request.referer
-        CurrentRequest.request_ip = request.ip
-        CurrentRequest.request_params = parameter_filter.filter(request.params)
+        {
+          request_id: request.uuid,
+          request_user_agent: request.user_agent,
+          request_referer: request.referer,
+          request_ip: request.ip,
+          request_params: parameter_filter.filter(request.params)
+        }
       end
     end
   end
