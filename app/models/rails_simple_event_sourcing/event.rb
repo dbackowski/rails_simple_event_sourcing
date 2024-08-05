@@ -72,6 +72,8 @@ module RailsSimpleEventSourcing
     end
 
     def add_metadata
+      return if CurrentRequest.metadata.blank?
+
       self.metadata = CurrentRequest.metadata.compact.presence
     end
 
