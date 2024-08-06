@@ -181,15 +181,15 @@ Customer.last.events
   updated_at: Sat, 03 Aug 2024 16:58:59.973815000 UTC +00:00>]
 ```
 
-As you can see, customer has been created and if you check its `.events' relationship, you should see an event that created it.
-This event has the same attributes in the payload as you set using the event_attributes method of the Customer::Events::CustomerCreated class.
+As you can see, customer has been created and if you check its `.events` relationship, you should see an event that created it.
+This event has the same attributes in the payload as you set using the event_attributes method of the `Customer::Events::CustomerCreated` class.
 There is also a metadata field, which is also defined as JSON, and you can store additional things in this field (this is just for information).
 
 #### Important notice
 
-The data stored in the events should be immutable (i.e., you shouldn't change it after it's created), so they have simple protection against accidental modification, so the model is marked as read-only.
+The data stored in the events should be immutable (i.e., you shouldn't change it after it's created), so they have simple protection against accidental modification, which means that the model is marked as read-only.
 
-The same goes for models, any model that should be updated by events should include `include RailsSimpleEventSourcing::Events', this will give you access to the `.events' relation and you will have read-only protection as well (model should only be updated by creating an event).
+The same goes for models, any model that should be updated by events should include `include RailsSimpleEventSourcing::Events`, this will give you access to the `.events` relation and you will have read-only protection as well (model should only be updated by creating an event).
 
 Example:
 
