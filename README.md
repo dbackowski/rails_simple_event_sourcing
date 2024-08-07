@@ -185,6 +185,17 @@ As you can see, customer has been created and if you check its `.events` relatio
 This event has the same attributes in the payload as you set using the event_attributes method of the `Customer::Events::CustomerCreated` class.
 There is also a metadata field, which is also defined as JSON, and you can store additional things in this field (this is just for information).
 
+To have these metadata fields populated automatically, you need to include `RailsSimpleEventSourcing::SetCurrentRequestDetails` in your ApplicationController.
+
+Example:
+
+
+```ruby
+class ApplicationController < ActionController::Base
+  include RailsSimpleEventSourcing::SetCurrentRequestDetails
+end
+```
+
 #### Important notice
 
 The data stored in the events should be immutable (i.e., you shouldn't change it after it's created), so they have simple protection against accidental modification, which means that the model is marked as read-only.
