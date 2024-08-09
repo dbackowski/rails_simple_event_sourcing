@@ -196,6 +196,24 @@ class ApplicationController < ActionController::Base
 end
 ```
 
+You can override metadata fields by defining the `event_metadata` method in the controller, this method should return a Hash which will be stored in the metadata field of the event.
+
+By default, this method looks like this:
+
+```ruby
+def event_metadata
+  parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+
+  {
+    request_id: request.uuid,
+    request_user_agent: request.user_agent,
+    request_referer: request.referer,
+    request_ip: request.ip,
+    request_params: parameter_filter.filter(request.params)
+  }
+end
+```
+
 #### Important notice
 
 The data stored in the events should be immutable (i.e., you shouldn't change it after it's created), so they have simple protection against accidental modification, which means that the model is marked as read-only.
