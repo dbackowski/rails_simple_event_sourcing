@@ -54,7 +54,7 @@ class Customer
 end
 ```
 
-- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, and finally creating a proper event. This should always return the `RailsSimpleEventSourcing::Result` struct.
+- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, doing additional business logic, and finally creating a proper event. This should always return the `RailsSimpleEventSourcing::Result` struct.
 
 Example:
 
