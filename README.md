@@ -59,7 +59,7 @@ end
 This struct has 3 keywords:
 - `success?:` true/false (whether everything went ok, commands are automatically validated, but still there may still be some an API call here, etc., so you can return false if something went wrong)
 - `data:` data that you want to return eg. to the controller (in the example above the `event.aggregate` will return a proper instance of the Customer model)
-- `errors:` in a scenario when you set success?: false you can also return here some errors related to this (see: `test/dummy/app/domain/customer/command_handlers/create.rb` for an example)
+- `errors:` in a scenario when you set `success?: false` you can also return here some errors related to this (see: `test/dummy/app/domain/customer/command_handlers/create.rb` for an example)
 
 Example:
 
