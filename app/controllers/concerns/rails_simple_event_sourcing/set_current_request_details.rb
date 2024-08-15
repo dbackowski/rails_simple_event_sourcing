@@ -7,6 +7,8 @@ module RailsSimpleEventSourcing
     included do
       before_action :set_event_metadata
 
+      private
+
       def set_event_metadata
         CurrentRequest.metadata = event_metadata
       end
