@@ -6,7 +6,7 @@ module RailsSimpleEventSourcing
 
     included do
       def readonly?
-        !@write_access_enabled
+        super || !@write_access_enabled
       end
 
       def enable_write_access!
