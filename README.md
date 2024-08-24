@@ -251,6 +251,16 @@ Or install it yourself as:
 $ gem install rails_simple_event_sourcing
 ```
 
+Copy migration to your app:
+```ruby
+rails rails_simple_event_sourcing:install:migrations
+```
+
+And then run the migration in order to create the rails_simple_event_sourcing_events table (the table that will store the event log):
+```ruby
+rake db:migrate
+```
+
 ## Contributing
 Contribution directions go here.
 
