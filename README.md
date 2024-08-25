@@ -182,7 +182,7 @@ Customer.last.events
 ```
 
 As you can see, customer has been created and if you check its `.events` relationship, you should see an event that created it.
-This event has the same attributes in the payload as you set using the event_attributes method of the `Customer::Events::CustomerCreated` class.
+This event has the same attributes in the payload as you set using the `event_attributes` method of the `Customer::Events::CustomerCreated` class.
 There is also a metadata field, which is also defined as JSON, and you can store additional things in this field (this is just for information).
 
 To have these metadata fields populated automatically, you need to include `RailsSimpleEventSourcing::SetCurrentRequestDetails` in your ApplicationController.
