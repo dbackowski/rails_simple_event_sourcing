@@ -153,4 +153,23 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, customer.events.count
     assert_equal customer.events.last, customer_event
   end
+
+  test 'should not allow to modify customer without applying event' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
+    )
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    customer = Customer.last
+
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      customer.update!(last_name: 'Rambo')
+    end
+
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      customer.destroy!
+    end
+  end
 end
