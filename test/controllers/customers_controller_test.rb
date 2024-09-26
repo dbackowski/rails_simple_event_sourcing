@@ -154,7 +154,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal customer.events.last, customer_event
   end
 
-  test 'should not allow to modify customer without applying event' do
+  test 'should not allow to modify customer without applying the event' do
     cmd = Customer::Commands::Create.new(
       first_name: 'John',
       last_name: 'Doe',
@@ -170,6 +170,15 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_raise ActiveRecord::ReadOnlyRecord do
       customer.destroy!
+    end
+  end
+
+  test 'should not allow to create a new customer without applying the event' do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      Customer.create!(
+        first_name: 'John',
+        last_name: 'Doe'
+      )
     end
   end
 end
