@@ -228,7 +228,7 @@ class Customer < ApplicationRecord
 end
 ```
 
-One thing to note here is that it would be better to do soft-deletes (mark record as deleted) instead of deleting records from the DB, since every record has relations called `events` when you have all the events that were applied to it.
+One thing to note here is that it would be better to do soft-deletes (mark record as deleted) instead of deleting records from the DB, since every record has relations called `events` where you have all the events applied to it.
 
 #### More examples
 
