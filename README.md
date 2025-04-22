@@ -57,8 +57,8 @@ end
 - `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, doing additional business logic, and finally creating a proper event. This should always return the `RailsSimpleEventSourcing::Result` struct.
 
 This struct has 3 keywords:
-- `success?:` true/false (if everything went well, commands are automatically validated, but there might still be an API call here, etc., so you can return false if something went wrong)
-- `data:` data that you want to return, eg. to the controller (in the example above the `event.aggregate` will return a proper instance of the Customer model)
+- `success?:` true/false (if everything went well, command is automatically validated, but there might still be an API call here, etc., so you can return false if something went wrong)
+- `data:` data that you want to return, eg. to the controller (in the example below the `event.aggregate` will return a proper instance of the Customer model)
 - `errors:` in a scenario where you set `success?:false`, you can also return some related errors here (see: test/dummy/app/domain/customer/command_handlers/create.rb for an example)
 
 Example:
