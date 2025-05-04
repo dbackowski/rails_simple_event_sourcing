@@ -63,6 +63,7 @@ module RailsSimpleEventSourcing
 
     def apply_on_aggregate
       @aggregate.enable_write_access!
+      apply_event_stream(@aggregate) unless @aggregate.new_record?
       apply(@aggregate)
     end
 
@@ -81,6 +82,11 @@ module RailsSimpleEventSourcing
       return aggregate_model_name.find(aggregate_id).lock! if aggregate_id.present?
 
       aggregate_model_name.new
+    end
+
+    def apply_event_stream(aggregate)
+      events = self.class.where(aggregate_id:).order(created_at: :asc)
+      events.each { |event| event.apply(aggregate) }
     end
   end
 end
