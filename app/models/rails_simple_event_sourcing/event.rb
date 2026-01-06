@@ -12,7 +12,7 @@ module RailsSimpleEventSourcing
     before_validation :enable_write_access_on_self, if: :new_record?
     before_validation :apply_on_aggregate, if: :aggregate_defined?
     before_save :add_metadata
-    before_save :assing_aggregate_id_and_persist_aggregate, if: :aggregate_defined?
+    before_save :assign_aggregate_id_and_persist_aggregate, if: :aggregate_defined?
 
     def self.aggregate_model_name(name)
       singleton_class.instance_variable_set(:@aggregate_model_name, name)
@@ -67,7 +67,7 @@ module RailsSimpleEventSourcing
       apply(@aggregate)
     end
 
-    def assing_aggregate_id_and_persist_aggregate
+    def assign_aggregate_id_and_persist_aggregate
       @aggregate.save! if aggregate_id.present?
       self.aggregate_id = @aggregate.id
     end
