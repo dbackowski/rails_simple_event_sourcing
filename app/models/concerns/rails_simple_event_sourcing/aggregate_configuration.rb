@@ -14,12 +14,12 @@ module RailsSimpleEventSourcing
       end
 
       def aggregate_model_class
-        aggregate_model_name&.constantize
+        aggregate_model_name
       end
     end
 
     def aggregate_model_name
-      self.class.aggregate_model_name.to_s
+      self.class.aggregate_model_name
     end
 
     def aggregate_model_class
