@@ -1,7 +1,7 @@
 class Customer
   module Events
     class CustomerDeleted < RailsSimpleEventSourcing::Event
-      aggregate_model_class_name Customer
+      aggregate_class Customer
       event_attributes :deleted_at
 
       def apply(aggregate)

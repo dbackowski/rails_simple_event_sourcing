@@ -91,7 +91,7 @@ Example:
 class Customer
   module Events
     class CustomerCreated < RailsSimpleEventSourcing::Event
-      aggregate_model_class_name Customer
+      aggregate_class Customer
       event_attributes :first_name, :last_name, :email, :created_at, :updated_at
 
       def apply(aggregate)
@@ -108,8 +108,8 @@ end
 ```
 
 In the example above:
-- `aggregate_model_class_name` is used for the corresponding model (each model is normally set to read-only mode since the only way to modify it should be via events), this param is optional since you can have an event that is not applied to the model, e.g. UserLoginAlreadyTaken
-- `event_attributes` - defines params that will be stored in the event and these params will be available to apply to the model via the `apply(aggregate)` method (where aggregate is an instance of your model passed in aggregate_model_class_name).
+- `aggregate_class` is used for the corresponding model (each model is normally set to read-only mode since the only way to modify it should be via events), this param is optional since you can have an event that is not applied to the model, e.g. UserLoginAlreadyTaken
+- `event_attributes` - defines params that will be stored in the event and these params will be available to apply to the model via the `apply(aggregate)` method (where aggregate is an instance of your model passed in aggregate_class).
 
 Here is an example of a custom controller that uses all the blocks described above:
 

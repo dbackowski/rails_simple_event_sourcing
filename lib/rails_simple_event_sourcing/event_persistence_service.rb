@@ -20,7 +20,6 @@ module RailsSimpleEventSourcing
     private
 
     def prepare_event
-      @event.class.prepend ApplyWithReturningAggregate
       @event.enable_write_access!
       @event.event_type = @event.class
     end
