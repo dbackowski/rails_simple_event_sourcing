@@ -7,6 +7,7 @@ require_relative 'command_handlers/base'
 require_relative 'commands/base'
 require_relative 'event_applicator'
 require_relative 'event_player'
+require_relative 'event_persistence_service'
 require_relative 'result'
 
 module RailsSimpleEventSourcing

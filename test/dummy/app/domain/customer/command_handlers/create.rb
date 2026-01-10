@@ -2,7 +2,7 @@ class Customer
   module CommandHandlers
     class Create < RailsSimpleEventSourcing::CommandHandlers::Base
       def call
-        event = Customer::Events::CustomerCreated.create(
+        event = Customer::Events::CustomerCreated.create!(
           first_name: @command.first_name,
           last_name: @command.last_name,
           email: @command.email,
@@ -12,7 +12,7 @@ class Customer
 
         RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
       rescue ActiveRecord::RecordNotUnique
-        event = Customer::Events::CustomerEmailTaken.create(
+        event = Customer::Events::CustomerEmailTaken.create!(
           first_name: @command.first_name,
           last_name: @command.last_name,
           email: @command.email

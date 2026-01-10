@@ -10,10 +10,9 @@ module RailsSimpleEventSourcing
     belongs_to :eventable, polymorphic: true, optional: true
     alias aggregate eventable
 
-    after_initialize :setup_event
-    before_validation :enable_write_access_on_self, if: :new_record?
-    before_validation :apply_to_aggregate, if: :aggregate_defined?
-    before_save :enrich_metadata
+    # Callbacks for automatic aggregate lifecycle
+    before_validation :setup_event_fields, on: :create
+    before_validation :apply_event_to_aggregate, on: :create, if: :aggregate_defined?
     before_save :persist_aggregate, if: :aggregate_defined?
 
     # Must be implemented by subclasses
@@ -23,36 +22,29 @@ module RailsSimpleEventSourcing
 
     private
 
-    def setup_event
-      load_aggregate if aggregate_defined?
+    def setup_event_fields
+      enable_write_access!
       self.event_type = self.class
-      self.eventable = @aggregate
-    end
-
-    def load_aggregate
-      @aggregate = aggregate_repository.find_or_build(aggregate_id)
-    end
-
-    def apply_to_aggregate
-      applicator = EventApplicator.new(self)
-      applicator.apply_to_aggregate(@aggregate)
-    end
-
-    def persist_aggregate
-      aggregate_repository.save!(@aggregate) if aggregate_id.present?
-      self.aggregate_id = @aggregate.id
-    end
-
-    def enrich_metadata
       self.metadata = CurrentRequest.metadata&.compact&.presence
     end
 
-    def enable_write_access_on_self
-      enable_write_access!
+    def apply_event_to_aggregate
+      @aggregate_for_persistence = aggregate_repository.find_or_build(aggregate_id)
+      self.eventable = @aggregate_for_persistence
+
+      applicator = EventApplicator.new(self)
+      applicator.apply_to_aggregate(@aggregate_for_persistence)
+    end
+
+    def persist_aggregate
+      return unless @aggregate_for_persistence
+
+      aggregate_repository.save!(@aggregate_for_persistence) if aggregate_id.present?
+      self.aggregate_id = @aggregate_for_persistence.id
     end
 
     def aggregate_repository
-      @aggregate_repository ||= AggregateRepository.new(aggregate_model_class)
+      @aggregate_repository ||= AggregateRepository.new(aggregate_model_class_name)
     end
   end
 end

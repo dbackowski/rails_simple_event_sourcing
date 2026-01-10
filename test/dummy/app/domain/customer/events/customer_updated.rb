@@ -1,7 +1,7 @@
 class Customer
   module Events
     class CustomerUpdated < RailsSimpleEventSourcing::Event
-      aggregate_model_name Customer
+      aggregate_model_class_name Customer
       event_attributes :first_name, :last_name, :updated_at
 
       def apply(aggregate)

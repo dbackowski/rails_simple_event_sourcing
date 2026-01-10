@@ -5,29 +5,25 @@ module RailsSimpleEventSourcing
     extend ActiveSupport::Concern
 
     class_methods do
-      def aggregate_model_name(name = nil)
+      def aggregate_model_class_name(name = nil)
         if name
-          @aggregate_model_name = name
+          @aggregate_model_class_name = name
         else
-          @aggregate_model_name
+          @aggregate_model_class_name
         end
       end
 
       def aggregate_model_class
-        aggregate_model_name
+        @aggregate_model_class_name
       end
     end
 
-    def aggregate_model_name
-      self.class.aggregate_model_name
-    end
-
-    def aggregate_model_class
-      self.class.aggregate_model_class
+    def aggregate_model_class_name
+      self.class.aggregate_model_class_name
     end
 
     def aggregate_defined?
-      aggregate_model_name.present?
+      aggregate_model_class_name.present?
     end
   end
 end
