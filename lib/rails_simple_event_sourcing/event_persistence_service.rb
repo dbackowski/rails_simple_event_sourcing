@@ -67,7 +67,7 @@ module RailsSimpleEventSourcing
     end
 
     def aggregate_repository
-      @aggregate_repository ||= AggregateRepository.new(@event.aggregate_model_class_name)
+      @aggregate_repository ||= AggregateRepository.new(@event.aggregate_class)
     end
   end
 end
