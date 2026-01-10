@@ -87,9 +87,10 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
     assert_no_changes -> { Customer.count } do
-      assert_changes -> { RailsSimpleEventSourcing::Event.count } do
-        put customer_url(Customer.last.id), params: { first_name: 'John', last_name: 'Rambo' },
-                                            headers: { 'HTTP_REFERER' => 'example.com' }
+      assert_changes -> { RailsSimpleEventSourcing::Event.count }, from: 1, to: 2 do
+        put customer_url(Customer.last.id),
+            params: { first_name: 'John', last_name: 'Rambo', email: 'jrambo@example.com' },
+            headers: { 'HTTP_REFERER' => 'example.com' }
       end
     end
 
@@ -99,6 +100,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil response_body['id']
     assert_equal 'John', response_body['first_name']
     assert_equal 'Rambo', response_body['last_name']
+    assert_equal 'jrambo@example.com', response_body['email']
     assert_nil response_body['deleted_at']
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
@@ -106,8 +108,12 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerUpdated')
     customer = Customer.last
 
+    # To checked that all events were applied correctly, we change the email into a different value directy in DB
+    Customer.update_all(email: 'jdoe@example.com') # rubocop:disable Rails/SkipsModelValidations
+
     assert_equal 'John', customer_event.payload['first_name']
     assert_equal 'Rambo', customer_event.payload['last_name']
+    assert_equal 'jrambo@example.com', customer_event.payload['email']
     assert_not_empty customer_event.payload['updated_at']
     assert_not_empty customer_event.metadata['request_id']
     assert_equal '127.0.0.1', customer_event.metadata['request_ip']
@@ -120,6 +126,24 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal 2, customer.events.count
     assert_equal customer.events.last, customer_event
+
+    assert_no_changes -> { Customer.count } do
+      assert_changes -> { RailsSimpleEventSourcing::Event.count }, from: 2, to: 3 do
+        put customer_url(Customer.last.id), params: { first_name: 'Jane', last_name: 'Doe' },
+                                            headers: { 'HTTP_REFERER' => 'example.com' }
+      end
+    end
+
+    response_body = response.parsed_body
+
+    assert_equal 200, response.status
+    assert_not_nil response_body['id']
+    assert_equal 'Jane', response_body['first_name']
+    assert_equal 'Doe', response_body['last_name']
+    assert_equal 'jrambo@example.com', response_body['email']
+    assert_nil response_body['deleted_at']
+    assert_not_empty response_body['created_at']
+    assert_not_empty response_body['updated_at']
   end
 
   test 'should delete customer' do

@@ -21,8 +21,8 @@ module RailsSimpleEventSourcing
     def replay_history_if_needed(aggregate)
       return if aggregate.new_record?
 
-      player = EventPlayer.new(@event.class)
-      player.replay_stream(@event.aggregate_id, aggregate)
+      player = EventPlayer.new(aggregate)
+      player.replay_stream
     end
 
     def apply_current_event(aggregate)

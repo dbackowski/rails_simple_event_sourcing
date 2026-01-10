@@ -2,26 +2,24 @@
 
 module RailsSimpleEventSourcing
   class EventPlayer
-    def initialize(event_class)
-      @event_class = event_class
+    def initialize(aggregate)
+      @aggregate = aggregate
     end
 
-    def replay_stream(aggregate_id, target_aggregate)
-      events = load_event_stream(aggregate_id)
-      apply_events(events, target_aggregate)
+    def replay_stream
+      events = load_event_stream
+      apply_events(events)
     end
 
     private
 
-    def load_event_stream(aggregate_id)
-      @event_class
-        .where(aggregate_id:)
-        .order(created_at: :asc)
+    def load_event_stream
+      @aggregate.events.order(created_at: :asc)
     end
 
-    def apply_events(events, aggregate)
+    def apply_events(events)
       events.each do |event|
-        event.apply(aggregate)
+        event.apply(@aggregate)
       end
     end
   end

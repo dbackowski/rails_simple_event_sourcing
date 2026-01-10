@@ -18,7 +18,8 @@ class CustomersController < ApplicationController
     cmd = Customer::Commands::Update.new(
       aggregate_id: params[:id],
       first_name: params[:first_name],
-      last_name: params[:last_name]
+      last_name: params[:last_name],
+      email: params[:email]
     )
     handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 

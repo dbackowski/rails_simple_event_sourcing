@@ -6,6 +6,7 @@ class Customer
           aggregate_id: @command.aggregate_id,
           first_name: @command.first_name,
           last_name: @command.last_name,
+          email: @command.email,
           updated_at: Time.zone.now
         )
 
