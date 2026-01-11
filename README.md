@@ -1,20 +1,100 @@
 # RailsSimpleEventSourcing ![tests](https://github.com/dbackowski/rails_simple_event_sourcing/actions/workflows/minitest.yml/badge.svg) ![codecheck](https://github.com/dbackowski/rails_simple_event_sourcing/actions/workflows/codecheck.yml/badge.svg)
 
-This is a very minimalist implementation of an event sourcing pattern, if you want a full-featured framework in ruby you can check out one of these:
+A minimalist implementation of the event sourcing pattern for Rails applications. This gem provides a simple, opinionated approach to event sourcing without the complexity of full-featured frameworks.
+
+If you need a more comprehensive solution, check out:
 - https://www.sequent.io
 - https://railseventstore.org
 
-I wanted to learn how to build this from scratch and also wanted to build something that would be very easy to use since most of the fully featured frameworks like the two above require a lot of configuration and learning.
+## Table of Contents
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Directory Structure](#directory-structure)
+  - [Commands](#commands)
+  - [Command Handlers](#command-handlers)
+  - [Events](#events)
+  - [Controller Integration](#controller-integration)
+  - [Update and Delete Operations](#update-and-delete-operations)
+  - [Metadata Tracking](#metadata-tracking)
+  - [Event Querying](#event-querying)
+- [Testing](#testing)
+- [Limitations](#limitations)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-### Important notice
+## Features
 
-This plugin will only work with Postgres database because it uses JSONB data type which is only supported by this database.
+- **Immutable Event Log** - All changes stored as immutable events with full audit trail
+- **Automatic Aggregate Reconstruction** - Rebuild model state by replaying events
+- **Built-in Metadata Tracking** - Captures request context (IP, user agent, params, etc.)
+- **Read-only Model Protection** - Prevents accidental direct model modifications
+- **Simple Command Pattern** - Clear command → handler → event flow
+- **PostgreSQL JSONB Storage** - Efficient JSON storage for event payloads and metadata
+- **Minimal Configuration** - Convention over configuration approach
+
+## Requirements
+
+- **Ruby**: 2.7 or higher
+- **Rails**: 6.0 or higher
+- **Database**: PostgreSQL 9.4+ (requires JSONB support)
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+gem "rails_simple_event_sourcing"
+```
+
+And then execute:
+```bash
+$ bundle
+```
+
+Or install it yourself as:
+```bash
+$ gem install rails_simple_event_sourcing
+```
+
+Copy migration to your app:
+```bash
+rails rails_simple_event_sourcing:install:migrations
+```
+
+Run the migration to create the events table:
+```bash
+rake db:migrate
+```
+
+This creates the `rails_simple_event_sourcing_events` table that stores your event log.
 
 ## Usage
 
-So how does it all work?
+### Architecture Overview
 
-Let's start with the directory structure:
+The event sourcing flow follows this pattern:
+
+```
+HTTP Request → Controller → Command → CommandHandler → Event → Aggregate (Model)
+                   ↓           ↓            ↓             ↓          ↓
+              Pass data   Parameters    Validation +   Immutable   Database
+                          + Validation   Business      Storage
+                            Rules        Logic
+```
+
+**Flow breakdown:**
+1. **Controller** - Receives request, creates command with params
+2. **Command** - Defines parameters and validation rules (ActiveModel)
+3. **CommandHandler** - Validates command, executes business logic, creates event
+4. **Event** - Immutable record of what happened
+5. **Aggregate** - Model updated via event
+
+### Directory Structure
+
+Let's start with the recommended directory structure:
 
 ```
 app/
@@ -28,17 +108,18 @@ app/
 │  │  │  ├─ create.rb
 ```
 
-The name of the top directory can be different because Rails does not namespace it.
+**Note:** The top directory name (`domain/`) can be different - Rails doesn't enforce this namespace.
 
-Based on the example above, the usage looks like this
+### Commands
 
-Command -> Command Handler -> Create Event (which under the hood writes changes to the appropriate model)
+Commands represent **intentions** to perform actions in your system. They are responsible for:
+- Encapsulating action parameters
+- Validating input data (using ActiveModel validations)
+- Being immutable value objects
 
-Explanation of each of these blocks above:
+Think of commands as "requests to do something" - they describe what you want to happen, not how it happens.
 
-- `Command` - is responsible for any action you want to take in your system, it is also responsible for validating the input parameters it takes (you can use the same validations you would normally use in models).
-
-Example:
+**Example - Create Command:**
 
 ```ruby
 class Customer
@@ -54,14 +135,27 @@ class Customer
 end
 ```
 
-- `CommandHandler` - is responsible for handling the passed command (it automatically checks if a command is valid), making additional API calls, doing additional business logic, and finally creating a proper event. This should always return the `RailsSimpleEventSourcing::Result` struct.
+### Command Handlers
 
-This struct has 3 keywords:
-- `success?:` true/false (if everything went well, command is automatically validated, but there might still be an API call here, etc., so you can return false if something went wrong)
-- `data:` data that you want to return, eg. to the controller (in the example below the `event.aggregate` will return a proper instance of the Customer model)
-- `errors:` in a scenario where you set `success?:false`, you can also return some related errors here (see: test/dummy/app/domain/customer/command_handlers/create.rb for an example)
+Command handlers contain the **business logic** for executing commands. They:
+- Automatically validate the command before execution
+- Perform business logic and API calls
+- Create events when successful
+- Handle errors gracefully
+- Return a `RailsSimpleEventSourcing::Result` object
 
-Example:
+**Result Object:**
+The `Result` struct has three fields:
+- `success?` - Boolean indicating if the operation succeeded
+- `data` - Data to return (usually the aggregate/model instance)
+- `errors` - Array or hash of error messages when `success?` is false
+
+**Helper Methods:**
+The base class provides convenience methods:
+- `success_result(data:)` - Creates a successful result
+- `failure_result(errors:)` - Creates a failed result
+
+**Example - Basic Handler:**
 
 ```ruby
 class Customer
@@ -76,16 +170,59 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
+        # Using helper method (recommended)
+        success_result(data: event.aggregate)
+
+        # Or create Result directly
+        # RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
       end
     end
   end
 end
 ```
 
-- `Event` - is responsible for storing immutable data of your actions, you should use past tense for naming events since an event is something that has already happened (e.g. customer was created)
+**Example - Handler with Error Handling:**
 
-Example:
+```ruby
+class Customer
+  module CommandHandlers
+    class Create < RailsSimpleEventSourcing::CommandHandlers::Base
+      def call
+        event = Customer::Events::CustomerCreated.create(
+          first_name: @command.first_name,
+          last_name: @command.last_name,
+          email: @command.email,
+          created_at: Time.zone.now,
+          updated_at: Time.zone.now
+        )
+
+        success_result(data: event.aggregate)
+      rescue ActiveRecord::RecordNotUnique
+        failure_result(errors: ["Email has already been taken"])
+      rescue StandardError => e
+        failure_result(errors: ["An error occurred: #{e.message}"])
+      end
+    end
+  end
+end
+```
+
+### Events
+
+Events represent **facts** - things that have already happened in your system. They:
+- Store immutable data about state changes
+- Use past tense naming (e.g., `CustomerCreated`, not `CreateCustomer`)
+- Define which aggregate (model) they apply to
+- Specify how to apply themselves to the aggregate
+- Are stored permanently in the event log
+
+**Key Concepts:**
+- `aggregate_class` - The model this event applies to (optional - some events may not modify models)
+- `event_attributes` - Fields stored in the event payload
+- `apply(aggregate)` - Method that applies the event to an aggregate instance
+- `aggregate_id` - Links the event to a specific aggregate instance
+
+**Example - Create Event:**
 
 ```ruby
 class Customer
@@ -107,11 +244,19 @@ class Customer
 end
 ```
 
-In the example above:
-- `aggregate_class` is used for the corresponding model (each model is normally set to read-only mode since the only way to modify it should be via events), this param is optional since you can have an event that is not applied to the model, e.g. UserLoginAlreadyTaken
-- `event_attributes` - defines params that will be stored in the event and these params will be available to apply to the model via the `apply(aggregate)` method (where aggregate is an instance of your model passed in aggregate_class).
+**Understanding the Event Structure:**
+- `aggregate_class Customer` - Specifies which model this event modifies
+- `event_attributes` - Defines what data gets stored in the event's JSON payload
+- `apply(aggregate)` - Receives an aggregate instance and applies the event's changes to it
+- `aggregate_id` - Auto-generated for creates, must be provided for updates/deletes
 
-Here is an example of a custom controller that uses all the blocks described above:
+**Note on aggregate_class:**
+- Optional - you can have events without an aggregate (e.g., `UserLoginFailed` for logging only)
+- The corresponding model should include `RailsSimpleEventSourcing::Events` for read-only protection
+
+### Controller Integration
+
+Here's how to wire everything together in a controller:
 
 ```ruby
 class CustomersController < ApplicationController
@@ -132,15 +277,60 @@ class CustomersController < ApplicationController
 end
 ```
 
-Now, if you make an API call using curl:
+### Update and Delete Operations
+
+**Update Example:**
+
+```ruby
+class CustomersController < ApplicationController
+  def update
+    cmd = Customer::Commands::Update.new(
+      aggregate_id: params[:id],
+      first_name: params[:first_name],
+      last_name: params[:last_name],
+      email: params[:email]
+    )
+    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    if handler.success?
+      render json: handler.data
+    else
+      render json: { errors: handler.errors }, status: :unprocessable_entity
+    end
+  end
+end
+```
+
+**Delete Example:**
+
+```ruby
+class CustomersController < ApplicationController
+  def destroy
+    cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
+    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    if handler.success?
+      head :no_content
+    else
+      render json: { errors: handler.errors }, status: :unprocessable_entity
+    end
+  end
+end
+```
+
+**Important:** For update and delete operations, you must pass `aggregate_id` to identify which record to modify. See the full examples in `test/dummy/app/domain/customer/`.
+
+### Testing the API
+
+Create a customer using curl:
 
 ```sh
 curl -X POST http://localhost:3000/customers \
   -H 'Content-Type: application/json' \
-  -d '{ "first_name": "John", "last_name": "Doe" }' | jq
+  -d '{ "first_name": "John", "last_name": "Doe", "email": "john@example.com" }' | jq
 ```
 
-You will get the response:
+Response:
 
 ```json
 {
@@ -152,43 +342,51 @@ You will get the response:
 }
 ```
 
-Run `rails c` and do the following:
+### Event Querying
+
+Open the Rails console (`rails c`) to explore the event log:
 
 ```ruby
-Customer.last
-=>
-#<Customer:0x0000000107e20998
- id: 1,
- first_name: "John",
- last_name: "Doe",
- created_at: Sat, 03 Aug 2024 16:52:30.829043000 UTC +00:00,
- updated_at: Sat, 03 Aug 2024 16:52:30.848243000 UTC +00:00>
-Customer.last.events
-[#<Customer::Events::CustomerCreated:0x0000000108dbcac8
-  id: 1,
-  type: "Customer::Events::CustomerCreated",
-  event_type: "Customer::Events::CustomerCreated",
-  aggregate_id: "1",
-  eventable_type: "Customer",
-  eventable_id: 1,
-  payload: {"last_name"=>"Doe", "created_at"=>"2024-08-03T16:58:59.952Z", "first_name"=>"John", "updated_at"=>"2024-08-03T16:58:59.952Z"},
-  metadata:
-   {"request_id"=>"2a40d4f9-509b-4b49-a39f-d978679fa5ef",
-    "request_ip"=>"::1",
-    "request_params"=>{"action"=>"create", "customer"=>{"last_name"=>"Doe", "first_name"=>"John"}, "last_name"=>"Doe", "controller"=>"customers", "first_name"=>"John"},
-    "request_user_agent"=>"curl/8.6.0"},
-  created_at: Sat, 03 Aug 2024 16:58:59.973815000 UTC +00:00,
-  updated_at: Sat, 03 Aug 2024 16:58:59.973815000 UTC +00:00>]
+# Get the customer
+customer = Customer.last
+# => #<Customer id: 1, first_name: "John", last_name: "Doe", ...>
+
+# Access all events for this customer
+customer.events
+# => [#<Customer::Events::CustomerCreated...>]
+
+# Get specific event details
+event = customer.events.first
+event.payload
+# => {"first_name"=>"John", "last_name"=>"Doe", "email"=>"john@example.com", ...}
+
+event.metadata
+# => {"request_id"=>"2a40d4f9-509b-4b49-a39f-d978679fa5ef",
+#     "request_ip"=>"::1",
+#     "request_user_agent"=>"curl/8.6.0", ...}
+
+# Query events by type
+RailsSimpleEventSourcing::Event.where(event_type: "Customer::Events::CustomerCreated")
+
+# Get events in a date range
+customer.events.where(created_at: 1.week.ago..Time.now)
+
+# Get all events for a specific aggregate
+RailsSimpleEventSourcing::Event.where(eventable_type: "Customer", eventable_id: 1)
 ```
 
-As you can see, customer has been created and if you check its `.events` relationship, you should see an event that created it.
-This event has the same attributes in the payload as you set using the `event_attributes` method of the `Customer::Events::CustomerCreated` class.
-There is also a metadata field, which is also defined as JSON, and you can store additional things in this field (this is just for information).
+**Event Structure:**
+- `payload` - Contains the event attributes you defined (as JSON)
+- `metadata` - Contains request context (request ID, IP, user agent, params)
+- `event_type` - The event class name
+- `aggregate_id` - Links to the aggregate instance
+- `eventable` - Polymorphic relation to the aggregate
 
-To have these metadata fields populated automatically, you need to include `RailsSimpleEventSourcing::SetCurrentRequestDetails` in your ApplicationController.
+### Metadata Tracking
 
-Example:
+To automatically capture request metadata (IP address, user agent, request ID, etc.), include the concern in your ApplicationController:
 
+**Setup:**
 
 ```ruby
 class ApplicationController < ActionController::Base
@@ -196,31 +394,42 @@ class ApplicationController < ActionController::Base
 end
 ```
 
-You can override metadata fields by defining the `event_metadata` method in the controller, this method should return a Hash which will be stored in the metadata field of the event.
+**Default Metadata:**
+By default, the following is captured:
+- `request_id` - Unique request identifier
+- `request_user_agent` - Client user agent
+- `request_referer` - HTTP referer
+- `request_ip` - Client IP address
+- `request_params` - Request parameters (filtered using Rails parameter filter)
 
-By default, this method looks like this:
+**Customizing Metadata:**
+Override the `event_metadata` method in your controller:
 
 ```ruby
-def event_metadata
-  parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+class ApplicationController < ActionController::Base
+  include RailsSimpleEventSourcing::SetCurrentRequestDetails
 
-  {
-    request_id: request.uuid,
-    request_user_agent: request.user_agent,
-    request_referer: request.referer,
-    request_ip: request.ip,
-    request_params: parameter_filter.filter(request.params)
-  }
+  def event_metadata
+    parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+
+    {
+      request_id: request.uuid,
+      request_user_agent: request.user_agent,
+      request_ip: request.ip,
+      request_params: parameter_filter.filter(request.params),
+      current_user_id: current_user&.id,  # Add custom fields
+      tenant_id: current_tenant&.id
+    }
+  end
 end
 ```
 
-#### Important notice
+**Metadata Outside HTTP Requests:**
+When events are created outside HTTP requests (background jobs, console, tests), metadata will be empty unless you manually set it using `CurrentRequest.metadata = {...}`.
 
-The data stored in the events should be immutable (i.e., you shouldn't change it after it's created), so they have simple protection against accidental modification, which means that the model is marked as read-only.
+### Model Configuration
 
-The same goes for models, any model that should be updated by events should include `include RailsSimpleEventSourcing::Events`, this will give you access to the `.events` relation and you will have read-only protection as well (model should only be updated by creating an event).
-
-Example:
+Models that use event sourcing should include the `RailsSimpleEventSourcing::Events` module:
 
 ```ruby
 class Customer < ApplicationRecord
@@ -228,37 +437,280 @@ class Customer < ApplicationRecord
 end
 ```
 
-One thing to note here is that it would be better to do soft-deletes (mark record as deleted) instead of deleting records from the DB, since every record has relations called `events` where you have all the events applied to it.
+**This provides:**
+- `.events` association - Access all events for this aggregate
+- Read-only protection - Prevents accidental direct modifications
+- Event replay capability - Reconstruct state from events
 
-#### More examples
+### Immutability and Read-Only Protection
 
-There is a sample application in the `test/dummy/app` directory so you can see how updates and deletes are handled.
+**Important Principles:**
+- **Events are immutable** - Once created, events should never be modified
+- **Models are read-only** - Aggregates should only be modified through events
+- Both have built-in protection against accidental changes
 
-## Installation
-Add this line to your application's Gemfile:
+### Soft Deletes
+
+**Recommendation:** Use soft deletes instead of hard deletes to preserve event history.
+
+**Why?**
+- Events are linked to aggregates via foreign keys
+- Hard deleting a record can orphan its events
+- Event log becomes incomplete
+- Cannot reconstruct historical state
+
+**How to implement:**
 
 ```ruby
-gem "rails_simple_event_sourcing"
+# Migration
+class AddDeletedAtToCustomers < ActiveRecord::Migration[7.0]
+  def change
+    add_column :customers, :deleted_at, :datetime
+    add_index :customers, :deleted_at
+  end
+end
+
+# Model
+class Customer < ApplicationRecord
+  include RailsSimpleEventSourcing::Events
+
+  scope :active, -> { where(deleted_at: nil) }
+  scope :deleted, -> { where.not(deleted_at: nil) }
+
+  def soft_delete
+    update(deleted_at: Time.current)
+  end
+end
+
+# Event
+class Customer::Events::CustomerDeleted < RailsSimpleEventSourcing::Event
+  aggregate_class Customer
+  event_attributes :deleted_at
+
+  def apply(aggregate)
+    aggregate.deleted_at = deleted_at
+  end
+end
 ```
 
-And then execute:
-```bash
-$ bundle
-```
+## Testing
 
-Or install it yourself as:
-```bash
-$ gem install rails_simple_event_sourcing
-```
+### Testing Commands
 
-Copy migration to your app:
 ```ruby
-rails rails_simple_event_sourcing:install:migrations
+require "test_helper"
+
+class Customer::Commands::CreateTest < ActiveSupport::TestCase
+  test "valid command" do
+    cmd = Customer::Commands::Create.new(
+      first_name: "John",
+      last_name: "Doe",
+      email: "john@example.com"
+    )
+
+    assert cmd.valid?
+  end
+
+  test "invalid without email" do
+    cmd = Customer::Commands::Create.new(
+      first_name: "John",
+      last_name: "Doe"
+    )
+
+    assert_not cmd.valid?
+    assert_includes cmd.errors[:email], "can't be blank"
+  end
+end
 ```
 
-And then run the migration in order to create the rails_simple_event_sourcing_events table (the table that will store the event log):
+### Testing Command Handlers
+
 ```ruby
-rake db:migrate
+require "test_helper"
+
+class Customer::CommandHandlers::CreateTest < ActiveSupport::TestCase
+  test "creates customer and event" do
+    cmd = Customer::Commands::Create.new(
+      first_name: "John",
+      last_name: "Doe",
+      email: "john@example.com"
+    )
+
+    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    assert result.success?
+    assert_instance_of Customer, result.data
+    assert_equal "John", result.data.first_name
+    assert_equal 1, result.data.events.count
+  end
+
+  test "handles duplicate email" do
+    # Create first customer
+    Customer::Events::CustomerCreated.create(
+      first_name: "Jane",
+      last_name: "Doe",
+      email: "john@example.com"
+    )
+
+    # Try to create duplicate
+    cmd = Customer::Commands::Create.new(
+      first_name: "John",
+      last_name: "Doe",
+      email: "john@example.com"
+    )
+
+    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    assert_not result.success?
+    assert_includes result.errors, "Email has already been taken"
+  end
+end
 ```
+
+### Testing in Controllers
+
+```ruby
+require "test_helper"
+
+class CustomersControllerTest < ActionDispatch::IntegrationTest
+  test "creates customer" do
+    post customers_url, params: {
+      first_name: "John",
+      last_name: "Doe",
+      email: "john@example.com"
+    }, as: :json
+
+    assert_response :success
+    assert_equal "John", JSON.parse(response.body)["first_name"]
+  end
+end
+```
+
+## Limitations
+
+Be aware of these limitations when using this gem:
+
+- **PostgreSQL Only** - Requires PostgreSQL 9.4+ for JSONB support
+- **No Event Versioning** - No built-in support for evolving event schemas over time
+- **No Snapshots** - All aggregate reconstruction done by replaying all events (can be slow for aggregates with many events)
+- **No Projections** - No built-in read model or projection support
+- **Manual aggregate_id** - Must manually track and pass `aggregate_id` for updates/deletes
+- **No Saga Support** - No built-in support for long-running processes or sagas
+- **Single Database** - Events and aggregates must be in the same database
+
+## Troubleshooting
+
+### CommandHandlerNotFoundError
+
+**Error:** `RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError: Handler Customer::CommandHandlers::Create not found`
+
+**Cause:** The command handler class doesn't follow the naming convention.
+
+**Solution:** Ensure your handler namespace matches your command namespace:
+- Command: `Customer::Commands::Create`
+- Handler: `Customer::CommandHandlers::Create` (not `CustomerCommandHandlers::Create`)
+
+### undefined method 'events' for Customer
+
+**Error:** `undefined method 'events' for #<Customer>`
+
+**Cause:** The model doesn't include the `RailsSimpleEventSourcing::Events` module.
+
+**Solution:**
+```ruby
+class Customer < ApplicationRecord
+  include RailsSimpleEventSourcing::Events
+end
+```
+
+### ActiveRecord::ReadOnlyRecord when updating model
+
+**Error:** `ActiveRecord::ReadOnlyRecord: Customer is marked as readonly`
+
+**Cause:** Trying to directly modify a model that uses event sourcing.
+
+**Solution:** Create an event instead:
+```ruby
+# Don't do this:
+customer.update(first_name: "Jane")
+
+# Do this:
+cmd = Customer::Commands::Update.new(aggregate_id: customer.id, first_name: "Jane", ...)
+RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+```
+
+### Missing aggregate_id for updates
+
+**Error:** `undefined method 'id' for nil:NilClass`
+
+**Cause:** Forgot to pass `aggregate_id` to update/delete commands.
+
+**Solution:**
+```ruby
+# Include aggregate_id in the command
+cmd = Customer::Commands::Update.new(
+  aggregate_id: params[:id],  # This is required
+  first_name: params[:first_name],
+  # ...
+)
+```
+
+### Metadata is empty in tests
+
+**Issue:** Event metadata is empty when creating events in tests.
+
+**Cause:** Events created outside HTTP requests don't have automatic metadata.
+
+**Solution:**
+```ruby
+# Manually set metadata in tests
+RailsSimpleEventSourcing::CurrentRequest.metadata = {
+  request_id: "test-123",
+  test_mode: true
+}
+```
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Report Bugs**: Open an issue on GitHub with:
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Ruby/Rails/PostgreSQL versions
+
+2. **Submit Pull Requests**:
+   - Fork the repository
+   - Create a feature branch (`git checkout -b feature/my-feature`)
+   - Write tests for your changes
+   - Ensure all tests pass (`rake test`)
+   - Follow existing code style
+   - Commit with clear messages
+   - Push and open a PR
+
+3. **Running Tests**:
+   ```bash
+   bundle install
+   cd test/dummy
+   rails db:create db:migrate RAILS_ENV=test
+   cd ../..
+   rake test
+   ```
+
+4. **Code Style**:
+   - Follow Ruby style guide
+   - Use RuboCop for linting
+   - Write clear, descriptive variable/method names
+   - Add comments for complex logic
+
+### More Examples
+
+See the `test/dummy/app/domain/customer/` directory for complete examples of:
+- Commands (create, update, delete)
+- Command handlers with error handling
+- Events (created, updated, deleted)
+- Controller integration
+
 ## License
+
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

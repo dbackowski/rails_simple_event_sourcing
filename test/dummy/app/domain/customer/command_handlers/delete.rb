@@ -7,7 +7,7 @@ class Customer
           deleted_at: Time.zone.now
         )
 
-        RailsSimpleEventSourcing::Result.new(success?: true)
+        success_result
       end
     end
   end

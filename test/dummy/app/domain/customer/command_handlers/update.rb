@@ -10,7 +10,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
+        success_result(data: event.aggregate)
       end
     end
   end
