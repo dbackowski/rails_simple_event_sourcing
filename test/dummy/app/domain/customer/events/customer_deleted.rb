@@ -3,10 +3,6 @@ class Customer
     class CustomerDeleted < RailsSimpleEventSourcing::Event
       aggregate_class Customer
       event_attributes :deleted_at
-
-      def apply(aggregate)
-        aggregate.deleted_at = deleted_at
-      end
     end
   end
 end

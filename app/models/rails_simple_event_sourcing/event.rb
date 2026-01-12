@@ -15,9 +15,11 @@ module RailsSimpleEventSourcing
     before_validation :apply_event_to_aggregate, on: :create, if: :aggregate_defined?
     before_save :persist_aggregate, if: :aggregate_defined?
 
-    # Must be implemented by subclasses
-    def apply(_aggregate)
-      raise NotImplementedError, "#{self.class}#apply must be implemented"
+    def apply(aggregate)
+      payload.each do |key, value|
+        aggregate.send("#{key}=", value) if aggregate.respond_to?("#{key}=") && value.present?
+      end
+      aggregate
     end
 
     private

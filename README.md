@@ -213,16 +213,47 @@ Events represent **facts** - things that have already happened in your system. T
 - Store immutable data about state changes
 - Use past tense naming (e.g., `CustomerCreated`, not `CreateCustomer`)
 - Define which aggregate (model) they apply to
-- Specify how to apply themselves to the aggregate
 - Are stored permanently in the event log
 
 **Key Concepts:**
 - `aggregate_class` - The model this event applies to (optional - some events may not modify models)
 - `event_attributes` - Fields stored in the event payload
-- `apply(aggregate)` - Method that applies the event to an aggregate instance
+- `apply(aggregate)` - **Optional** method that applies the event to an aggregate instance
 - `aggregate_id` - Links the event to a specific aggregate instance
 
-**Example - Create Event:**
+**Example - Basic Event (Automatic Application):**
+
+```ruby
+class Customer
+  module Events
+    class CustomerCreated < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      event_attributes :first_name, :last_name, :email, :created_at, :updated_at
+    end
+  end
+end
+```
+
+**Automatic Attribute Application:**
+
+By default, all attributes declared in `event_attributes` will be **automatically applied** to the aggregate. You don't need to implement the `apply` method unless you have custom logic requirements.
+
+The default implementation sets each event attribute on the aggregate:
+```ruby
+# This happens automatically
+aggregate.first_name = first_name
+aggregate.last_name = last_name
+aggregate.email = email
+# ... and so on for all event_attributes
+```
+
+**Example - Custom Apply Method (When Needed):**
+
+You may still need to implement a custom `apply` method in certain cases:
+- Setting computed or derived values
+- Complex business logic during application
+- Handling nested objects or special data transformations
+- Setting the aggregate ID explicitly (though this is usually handled automatically)
 
 ```ruby
 class Customer
@@ -232,12 +263,13 @@ class Customer
       event_attributes :first_name, :last_name, :email, :created_at, :updated_at
 
       def apply(aggregate)
+        # Custom logic example
         aggregate.id = aggregate_id
-        aggregate.first_name = first_name
-        aggregate.last_name = last_name
-        aggregate.email = email
-        aggregate.created_at = created_at
-        aggregate.updated_at = updated_at
+        aggregate.full_name = "#{first_name} #{last_name}"  # Computed value
+        aggregate.email_normalized = email.downcase.strip   # Transformation
+
+        # You can still call super to apply remaining attributes automatically
+        super
       end
     end
   end
@@ -246,8 +278,8 @@ end
 
 **Understanding the Event Structure:**
 - `aggregate_class Customer` - Specifies which model this event modifies
-- `event_attributes` - Defines what data gets stored in the event's JSON payload
-- `apply(aggregate)` - Receives an aggregate instance and applies the event's changes to it
+- `event_attributes` - Defines what data gets stored in the event's JSON payload and what will be automatically applied
+- `apply(aggregate)` - Optional method; only implement if you need custom logic beyond automatic attribute assignment
 - `aggregate_id` - Auto-generated for creates, must be provided for updates/deletes
 
 **Note on aggregate_class:**
@@ -487,9 +519,7 @@ class Customer::Events::CustomerDeleted < RailsSimpleEventSourcing::Event
   aggregate_class Customer
   event_attributes :deleted_at
 
-  def apply(aggregate)
-    aggregate.deleted_at = deleted_at
-  end
+  # No need to implement apply - deleted_at will be automatically set on the aggregate
 end
 ```
 
