@@ -146,6 +146,30 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty response_body['updated_at']
   end
 
+  test 'should not update customer when validation fails' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
+    )
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+
+    assert_no_changes -> { Customer.count } do
+      assert_no_changes -> { RailsSimpleEventSourcing::Event.count } do
+        put customer_url(Customer.last.id),
+            params: { first_name: 'John' },
+            headers: { 'HTTP_REFERER' => 'example.com' }
+      end
+    end
+
+    response_body = response.parsed_body
+
+    assert_equal 422, response.status
+
+    assert_equal 1, response_body['errors'].keys.size
+    assert_equal 'can\'t be blank', response_body['errors']['last_name'][0]
+  end
+
   test 'should delete customer' do
     cmd = Customer::Commands::Create.new(
       first_name: 'John',

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_12_162450) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -25,15 +25,17 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
   end
 
   create_table "rails_simple_event_sourcing_events", force: :cascade do |t|
+    t.string "eventable_type"
+    t.bigint "eventable_id"
     t.string "type", null: false
     t.string "event_type", null: false
     t.string "aggregate_id"
-    t.string "eventable_type"
-    t.bigint "eventable_id"
+    t.integer "version", null: false
     t.jsonb "payload"
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["aggregate_id", "version"], name: "index_events_on_aggregate_id_and_version", unique: true
     t.index ["aggregate_id"], name: "index_rails_simple_event_sourcing_events_on_aggregate_id"
     t.index ["event_type"], name: "index_rails_simple_event_sourcing_events_on_event_type"
     t.index ["eventable_type", "eventable_id"], name: "index_rails_simple_event_sourcing_events_on_eventable"

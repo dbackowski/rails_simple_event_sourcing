@@ -7,6 +7,7 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
       t.string :type, null: false
       t.string :event_type, null: false
       t.string :aggregate_id
+      t.integer :version, null: false
       t.jsonb :payload
       t.jsonb :metadata
 
@@ -15,6 +16,7 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
       t.index :type
       t.index :event_type
       t.index :aggregate_id
+      t.index %i[aggregate_id version], unique: true, name: 'index_events_on_aggregate_id_and_version'
       t.index :payload, using: :gin
       t.index :metadata, using: :gin
     end

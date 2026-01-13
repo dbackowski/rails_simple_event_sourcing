@@ -14,7 +14,7 @@ module RailsSimpleEventSourcing
     private
 
     def load_event_stream
-      @aggregate.events.order(created_at: :asc)
+      @aggregate.events.order(version: :asc)
     end
 
     def apply_events(events)
