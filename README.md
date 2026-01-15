@@ -10,11 +10,13 @@ If you need a more comprehensive solution, check out:
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [Usage](#usage)
   - [Directory Structure](#directory-structure)
   - [Commands](#commands)
   - [Command Handlers](#command-handlers)
   - [Events](#events)
+  - [Registering Command Handlers](#registering-command-handlers)
   - [Controller Integration](#controller-integration)
   - [Update and Delete Operations](#update-and-delete-operations)
   - [Metadata Tracking](#metadata-tracking)
@@ -22,6 +24,8 @@ If you need a more comprehensive solution, check out:
 - [Testing](#testing)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
+  - [Command Handler Registry](#command-handler-registry)
+  - [CommandHandlerNotFoundError](#commandhandlernotfounderror)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -31,6 +35,7 @@ If you need a more comprehensive solution, check out:
 - **Automatic Aggregate Reconstruction** - Rebuild model state by replaying events
 - **Built-in Metadata Tracking** - Captures request context (IP, user agent, params, etc.)
 - **Read-only Model Protection** - Prevents accidental direct model modifications
+- **Command Handler Registry** - Explicit command-to-handler mapping with fallback to convention
 - **Simple Command Pattern** - Clear command → handler → event flow
 - **PostgreSQL JSONB Storage** - Efficient JSON storage for event payloads and metadata
 - **Minimal Configuration** - Convention over configuration approach
@@ -70,6 +75,19 @@ rake db:migrate
 ```
 
 This creates the `rails_simple_event_sourcing_events` table that stores your event log.
+
+## Configuration
+
+You can configure the behavior of the gem using the configuration block:
+
+```ruby
+# config/initializers/rails_simple_event_sourcing.rb
+RailsSimpleEventSourcing.configure do |config|
+  # When true, falls back to convention-based handler resolution
+  # When false, requires explicit registration of all handlers
+  config.use_naming_convention_fallback = true
+end
+```
 
 ## Usage
 
@@ -143,6 +161,11 @@ Command handlers contain the **business logic** for executing commands. They:
 - Create events when successful
 - Handle errors gracefully
 - Return a `RailsSimpleEventSourcing::Result` object
+
+**Handler Discovery:**
+Handlers can be discovered in two ways:
+1. **Explicit Registration** (recommended) - Using the `CommandHandlerRegistry` to register handlers
+2. **Convention-based** - Using naming convention mapping (can be disabled via configuration)
 
 **Result Object:**
 The `Result` struct has three fields:
@@ -285,6 +308,38 @@ end
 **Note on aggregate_class:**
 - Optional - you can have events without an aggregate (e.g., `UserLoginFailed` for logging only)
 - The corresponding model should include `RailsSimpleEventSourcing::Events` for read-only protection
+
+### Registering Command Handlers
+
+The recommended approach is to register command handlers explicitly using the registry. This makes the command-to-handler mapping explicit and avoids relying on naming conventions.
+
+```ruby
+# config/initializers/rails_simple_event_sourcing.rb
+
+RailsSimpleEventSourcing.configure do |config|
+  config.use_naming_convention_fallback = false
+end
+
+Rails.application.config.after_initialize do
+  # Register all command handlers
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Create,
+    Customer::CommandHandlers::Create
+  )
+
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Update,
+    Customer::CommandHandlers::Update
+  )
+
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Delete,
+    Customer::CommandHandlers::Delete
+  )
+end
+```
+
+If you prefer the convention-based approach, you don't need to take any action, as the use_naming_convention_fallback is set to true by default.
 
 ### Controller Integration
 
@@ -525,6 +580,35 @@ end
 
 ## Testing
 
+### Setting Up Tests with Command Handler Registry
+
+If you're using the command handler registry with `use_naming_convention_fallback = false`, you'll need to register your command handlers in your tests. There are a few approaches to handling this:
+
+1. **Create an initializer in the test app:**
+
+```ruby
+# test/dummy/config/initializers/rails_simple_event_sourcing.rb
+Rails.application.config.after_initialize do
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Create,
+    Customer::CommandHandlers::Create
+  )
+  # Register other handlers...
+end
+```
+
+2. **Register in test_helper.rb:**
+
+```ruby
+# test/test_helper.rb
+# After requiring the environment
+RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+  Customer::Commands::Create,
+  Customer::CommandHandlers::Create
+)
+# Register other handlers...
+```
+
 ### Testing Commands
 
 ```ruby
@@ -630,15 +714,51 @@ Be aware of these limitations when using this gem:
 
 ## Troubleshooting
 
+### Command Handler Registry
+
+The gem provides a registry pattern for explicitly mapping commands to their handlers. This is a more robust alternative to the convention-based mapping.
+
+**Configuration:**
+
+```ruby
+# config/initializers/rails_simple_event_sourcing.rb
+RailsSimpleEventSourcing.configure do |config|
+  # Set to false to disable convention-based mapping
+  config.use_naming_convention_fallback = false
+end
+
+# Register command handlers
+Rails.application.config.after_initialize do
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Create,
+    Customer::CommandHandlers::Create
+  )
+
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Update,
+    Customer::CommandHandlers::Update
+  )
+
+  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
+    Customer::Commands::Delete,
+    Customer::CommandHandlers::Delete
+  )
+end
+```
+
 ### CommandHandlerNotFoundError
 
-**Error:** `RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError: Handler Customer::CommandHandlers::Create not found`
+**Error:** `RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError: Handler Customer::CommandHandlers::Create not found` or `No handler registered for Customer::Commands::Create`
 
-**Cause:** The command handler class doesn't follow the naming convention.
+**Causes:**
+1. The command handler class doesn't follow the naming convention (when using convention-based mapping)
+2. The command handler hasn't been registered with the registry (when using explicit registration)
 
-**Solution:** Ensure your handler namespace matches your command namespace:
-- Command: `Customer::Commands::Create`
-- Handler: `Customer::CommandHandlers::Create` (not `CustomerCommandHandlers::Create`)
+**Solutions:**
+1. Ensure your handler namespace matches your command namespace:
+   - Command: `Customer::Commands::Create`
+   - Handler: `Customer::CommandHandlers::Create` (not `CustomerCommandHandlers::Create`)
+2. Register your command handlers using the registry pattern shown above
 
 ### undefined method 'events' for Customer
 
