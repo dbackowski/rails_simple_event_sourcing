@@ -2,7 +2,6 @@
 
 module RailsSimpleEventSourcing
   class Event < ApplicationRecord
-    prepend ApplyWithReturningAggregate
     include ReadOnly
     include EventAttributes
     include AggregateConfiguration
@@ -24,7 +23,6 @@ module RailsSimpleEventSourcing
       payload.each do |key, value|
         aggregate.send("#{key}=", value) if aggregate.respond_to?("#{key}=")
       end
-      aggregate
     end
 
     private

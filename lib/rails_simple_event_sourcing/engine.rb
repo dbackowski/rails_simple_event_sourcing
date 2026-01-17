@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'aggregate_repository'
-require_relative 'apply_with_returning_aggregate'
 require_relative 'command_handler'
 require_relative 'command_handlers/base'
 require_relative 'commands/base'
