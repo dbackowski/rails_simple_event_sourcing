@@ -40,6 +40,7 @@ module RailsSimpleEventSourcing
     def calculate_next_version
       return 1 unless aggregate_id
 
+      aggregate_class.lock.find(aggregate_id)
       max_version = Event.where(aggregate_id:).maximum(:version) || 0
       max_version + 1
     end
