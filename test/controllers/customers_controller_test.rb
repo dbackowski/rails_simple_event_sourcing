@@ -16,6 +16,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     response_body = response.parsed_body
 
+    assert_equal %w[id first_name last_name email deleted_at created_at updated_at], response_body.keys
     assert_equal 200, response.status
     assert_not_nil response_body['id']
     assert_equal 'John', response_body['first_name']
@@ -96,6 +97,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     response_body = response.parsed_body
 
+    assert_equal %w[email last_name created_at first_name updated_at id deleted_at], response_body.keys
     assert_equal 200, response.status
     assert_not_nil response_body['id']
     assert_equal 'John', response_body['first_name']

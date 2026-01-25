@@ -5,14 +5,18 @@ module RailsSimpleEventSourcing
     extend ActiveSupport::Concern
 
     included do
-      attribute :write_access_enabled, :boolean, default: false
-
       def readonly?
         super || !write_access_enabled
       end
 
       def enable_write_access!
-        self.write_access_enabled = true
+        @write_access_enabled = true
+      end
+
+      private
+
+      def write_access_enabled
+        @write_access_enabled ||= false
       end
     end
   end
