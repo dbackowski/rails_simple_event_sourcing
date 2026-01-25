@@ -15,8 +15,8 @@ module RailsSimpleEventSourcing
 
     # Callbacks for automatic aggregate lifecycle
     before_validation :setup_event_fields, on: :create
-    before_validation :set_version
     before_validation :apply_event_to_aggregate, on: :create, if: :aggregate_defined?
+    before_validation :set_version
     before_save :persist_aggregate, if: :aggregate_defined?
 
     def apply(aggregate)
@@ -40,7 +40,6 @@ module RailsSimpleEventSourcing
     def calculate_next_version
       return 1 unless aggregate_id
 
-      aggregate_class.lock.find(aggregate_id)
       max_version = Event.where(aggregate_id:).maximum(:version) || 0
       max_version + 1
     end
