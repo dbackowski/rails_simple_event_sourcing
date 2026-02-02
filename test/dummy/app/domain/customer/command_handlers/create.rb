@@ -12,7 +12,7 @@ class Customer
 
         success_result(data: event.aggregate)
       rescue ActiveRecord::RecordNotUnique
-        event = Customer::Events::CustomerEmailTaken.create!(
+        Customer::Events::CustomerEmailTaken.create!(
           first_name: @command.first_name,
           last_name: @command.last_name,
           email: @command.email

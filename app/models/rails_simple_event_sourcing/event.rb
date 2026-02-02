@@ -9,14 +9,10 @@ module RailsSimpleEventSourcing
     belongs_to :eventable, polymorphic: true, optional: true
     alias aggregate eventable
 
-    # Validations
     validates :version, presence: true, numericality: { only_integer: true, greater_than: 0 }
     validates :version, uniqueness: { scope: :aggregate_id }, if: -> { aggregate_id.present? }
 
-    # Callbacks for automatic aggregate lifecycle
-    before_validation :setup_event_fields, on: :create
-    before_validation :apply_event_to_aggregate, on: :create, if: :aggregate_defined?
-    before_validation :set_version
+    before_validation :setup_for_create, on: :create
     before_save :persist_aggregate, if: :aggregate_defined?
 
     def apply(aggregate)
@@ -27,10 +23,22 @@ module RailsSimpleEventSourcing
 
     private
 
+    def setup_for_create
+      setup_event_fields
+      setup_aggregate if aggregate_defined?
+      set_version
+    end
+
     def setup_event_fields
       enable_write_access!
       self.event_type = self.class
       self.metadata = CurrentRequest.metadata&.compact&.presence
+    end
+
+    def setup_aggregate
+      @aggregate = aggregate_repository.find_or_build(aggregate_id)
+      self.eventable = @aggregate
+      EventApplicator.new(self).apply_to_aggregate(@aggregate)
     end
 
     def set_version
@@ -44,19 +52,11 @@ module RailsSimpleEventSourcing
       max_version + 1
     end
 
-    def apply_event_to_aggregate
-      @aggregate_for_persistence = aggregate_repository.find_or_build(aggregate_id)
-      self.eventable = @aggregate_for_persistence
-
-      applicator = EventApplicator.new(self)
-      applicator.apply_to_aggregate(@aggregate_for_persistence)
-    end
-
     def persist_aggregate
-      return unless @aggregate_for_persistence
+      return unless @aggregate
 
-      aggregate_repository.save!(@aggregate_for_persistence) if aggregate_id.present?
-      self.aggregate_id = @aggregate_for_persistence.id
+      aggregate_repository.save!(@aggregate)
+      self.aggregate_id = @aggregate.id
     end
 
     def aggregate_repository
