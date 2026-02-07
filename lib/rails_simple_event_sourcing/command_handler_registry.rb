@@ -2,9 +2,15 @@
 
 module RailsSimpleEventSourcing
   class CommandHandlerRegistry
+    CommandAlreadyRegisteredError = Class.new(StandardError)
+
     @registry = Concurrent::Map.new
 
     def self.register(command_class, handler_class)
+      if @registry.key?(command_class)
+        raise CommandAlreadyRegisteredError, "Command handler already registered for #{command_class}"
+      end
+
       @registry[command_class] = handler_class
     end
 
