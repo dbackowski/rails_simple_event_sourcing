@@ -14,6 +14,10 @@ module RailsSimpleEventSourcing
       @registry[command_class] = handler_class
     end
 
+    def self.deregister(command_class)
+      @registry.delete(command_class)
+    end
+
     def self.handler_for(command_class)
       @registry[command_class]
     end
