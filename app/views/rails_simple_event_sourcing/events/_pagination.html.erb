@@ -1,0 +1,25 @@
+<% if @total_pages > 1 %>
+  <nav class="pagination">
+    <% if @current_page > 1 %>
+      <%= link_to "Prev", events_path(page: @current_page - 1, q: params[:q], event_type: params[:event_type], aggregate: params[:aggregate]) %>
+    <% else %>
+      <span class="disabled">Prev</span>
+    <% end %>
+
+    <% pagination_window(@current_page, @total_pages).each do |page| %>
+      <% if page == :gap %>
+        <span class="gap">&hellip;</span>
+      <% elsif page == @current_page %>
+        <span class="current"><%= page %></span>
+      <% else %>
+        <%= link_to page, events_path(page: page, q: params[:q], event_type: params[:event_type], aggregate: params[:aggregate]) %>
+      <% end %>
+    <% end %>
+
+    <% if @current_page < @total_pages %>
+      <%= link_to "Next", events_path(page: @current_page + 1, q: params[:q], event_type: params[:event_type], aggregate: params[:aggregate]) %>
+    <% else %>
+      <span class="disabled">Next</span>
+    <% end %>
+  </nav>
+<% end %>

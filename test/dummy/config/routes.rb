@@ -7,6 +7,8 @@ Rails.application.routes.draw do
 
   resources :customers
 
+  mount RailsSimpleEventSourcing::Engine, at: "/event_sourcing"
+
   # Defines the root path route ("/")
   # root "posts#index"
 end

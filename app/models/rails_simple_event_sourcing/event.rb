@@ -37,8 +37,9 @@ module RailsSimpleEventSourcing
 
     def setup_aggregate
       @aggregate = aggregate_repository.find_or_build(aggregate_id)
+      @aggregate.enable_write_access!
       self.eventable = @aggregate
-      EventApplicator.new(self).apply_to_aggregate(@aggregate)
+      EventPlayer.new(@aggregate).replay_and_apply(self)
     end
 
     def set_version

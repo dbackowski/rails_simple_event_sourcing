@@ -1,0 +1,48 @@
+<%= form_with url: events_path, method: :get, local: true, class: "search-form" do %>
+  <%= select_tag :event_type, options_for_select([["All event types", ""]] + @event_types.map { |t| [t, t] }, params[:event_type]) %>
+  <%= select_tag :aggregate, options_for_select([["All aggregates", ""]] + @aggregates.map { |a| [a, a] }, params[:aggregate]) %>
+  <%= text_field_tag :q, params[:q], placeholder: "Aggregate ID or key:value from payload or metadata" %>
+  <button type="submit">Search</button>
+  <% if params[:q].present? || params[:event_type].present? || params[:aggregate].present? %>
+    <%= link_to "Clear", events_path, class: "clear-link" %>
+  <% end %>
+<% end %>
+
+<div class="card">
+  <div class="info-bar">
+    <span><%= @total_count %> event<%= @total_count == 1 ? "" : "s" %> found</span>
+    <span>Page <%= @current_page %> of <%= @total_pages %></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Event Type</th>
+        <th>Aggregate</th>
+        <th>Aggregate ID</th>
+        <th>Version</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @events.each do |event| %>
+        <tr>
+          <td class="text-mono"><%= link_to event.id, event_path(event) %></td>
+          <td><span class="badge"><%= event.event_type %></span></td>
+          <td><%= event.aggregate_class&.name || "-" %></td>
+          <td class="text-mono"><%= event.aggregate_id || "-" %></td>
+          <td><%= event.version %></td>
+          <td class="text-muted"><%= event.read_attribute(:created_at)&.strftime("%Y-%m-%d %H:%M:%S") %></td>
+        </tr>
+      <% end %>
+      <% if @events.empty? %>
+        <tr>
+          <td colspan="6" style="text-align: center; color: #888; padding: 32px;">No events found.</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= render "pagination" %>
+</div>

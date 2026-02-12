@@ -6,6 +6,11 @@ module RailsSimpleEventSourcing
       @aggregate = aggregate
     end
 
+    def replay_and_apply(new_event)
+      replay_stream unless @aggregate.new_record?
+      new_event.apply(@aggregate)
+    end
+
     def replay_stream
       events = load_event_stream
       apply_events(events)

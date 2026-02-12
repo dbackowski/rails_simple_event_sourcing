@@ -35,8 +35,9 @@ class AggregateRepositoryTest < ActiveSupport::TestCase
     end
   end
 
-  test 'saves an aggregate with write access enabled' do
+  test 'saves an aggregate' do
     aggregate = Customer.new(first_name: 'John', last_name: 'Doe', email: 'john@example.com')
+    aggregate.enable_write_access!
 
     @repository.save!(aggregate)
 

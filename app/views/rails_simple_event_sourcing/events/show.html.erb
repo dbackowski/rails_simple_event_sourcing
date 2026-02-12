@@ -1,0 +1,55 @@
+<%= link_to "&larr; Back to events".html_safe, events_path(q: params[:q], page: params[:page]), class: "back-link" %>
+
+<div class="card">
+  <dl class="detail-grid">
+    <dt>Event Type</dt>
+    <dd><span class="badge"><%= @event.event_type %></span></dd>
+
+    <dt>Aggregate</dt>
+    <dd><%= @event.aggregate_class&.name || "-" %></dd>
+
+    <dt>Aggregate ID</dt>
+    <dd class="text-mono"><%= @event.aggregate_id || "-" %></dd>
+
+    <dt>Version</dt>
+    <dd>
+      <% if @previous_version %>
+        <%= link_to "&larr; Previous".html_safe, event_path(@previous_version) %>
+      <% end %>
+      <%= @event.version %>
+      <% if @next_version %>
+        <%= link_to "Next &rarr;".html_safe, event_path(@next_version) %>
+      <% end %>
+    </dd>
+
+    <dt>Created At</dt>
+    <dd><%= @event.read_attribute(:created_at)&.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+  </dl>
+</div>
+
+<h2>Payload</h2>
+<div class="card">
+  <% if @event.payload.present? %>
+    <pre class="json"><%= JSON.pretty_generate(@event.payload) %></pre>
+  <% else %>
+    <p class="text-muted">No payload</p>
+  <% end %>
+</div>
+
+<h2>Metadata</h2>
+<div class="card">
+  <% if @event.metadata.present? %>
+    <pre class="json"><%= JSON.pretty_generate(@event.metadata) %></pre>
+  <% else %>
+    <p class="text-muted">No metadata</p>
+  <% end %>
+</div>
+
+<h2>Aggregate State (at version <%= @event.version %>)</h2>
+<div class="card">
+  <% if @aggregate_state.present? %>
+    <pre class="json"><%= JSON.pretty_generate(@aggregate_state) %></pre>
+  <% else %>
+    <p class="text-muted">No aggregate</p>
+  <% end %>
+</div>

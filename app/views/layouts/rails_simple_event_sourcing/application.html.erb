@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Event Sourcing - Events</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #1a1a2e; }
+    h2 { font-size: 1.25rem; margin-bottom: 16px; color: #1a1a2e; }
+    a { color: #4361ee; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .header { background: #1a1a2e; color: #fff; padding: 16px 0; margin-bottom: 24px; }
+    .header .container { display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { color: #fff; margin: 0; font-size: 1.2rem; }
+    .header a { color: #a8b2d1; }
+    .header a:hover { color: #fff; }
+
+    .search-form { margin-bottom: 20px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .search-form select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; background: #fff; }
+    .search-form select:focus { outline: none; border-color: #4361ee; box-shadow: 0 0 0 2px rgba(67,97,238,0.15); }
+    .search-form input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; min-width: 200px; }
+    .search-form input[type="text"]:focus { outline: none; border-color: #4361ee; box-shadow: 0 0 0 2px rgba(67,97,238,0.15); }
+    .search-form button { padding: 8px 20px; background: #4361ee; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; }
+    .search-form button:hover { background: #3a56d4; }
+    .clear-link { padding: 8px 16px; background: #eee; border-radius: 6px; color: #333 !important; display: flex; align-items: center; }
+
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f8f9fa; font-weight: 600; color: #555; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+    tr:hover { background: #f8f9fb; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500; background: #e8eaf6; color: #3949ab; }
+    .text-muted { color: #888; font-size: 0.85rem; }
+    .text-mono { font-family: "SF Mono", Monaco, "Cascadia Code", monospace; font-size: 0.85rem; }
+
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
+    .pagination a, .pagination span { display: inline-block; padding: 6px 12px; border-radius: 4px; font-size: 0.9rem; }
+    .pagination a { background: #fff; border: 1px solid #ddd; color: #333; }
+    .pagination a:hover { background: #f0f0f0; text-decoration: none; }
+    .pagination .current { background: #4361ee; color: #fff; border: 1px solid #4361ee; font-weight: 600; }
+    .pagination .gap { border: none; color: #888; }
+    .pagination .disabled { color: #ccc; border-color: #eee; pointer-events: none; }
+
+    .detail-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; }
+    .detail-grid dt { font-weight: 600; color: #555; font-size: 0.85rem; }
+    .detail-grid dd { font-size: 0.9rem; }
+    pre.json { background: #f5f7fa; border: 1px solid #e2e6ea; border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+
+    .info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: #666; font-size: 0.85rem; }
+    .back-link { margin-bottom: 16px; display: inline-block; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <%= yield %>
+  </div>
+</body>
+</html>

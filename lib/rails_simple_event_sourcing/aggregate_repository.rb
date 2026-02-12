@@ -15,7 +15,6 @@ module RailsSimpleEventSourcing
     end
 
     def save!(aggregate)
-      aggregate.enable_write_access!
       aggregate.save!
     end
 
