@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-class EventPlayerTest < ActiveSupport::TestCase
+class EventPlayerTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLength
   test 'replays single event to aggregate' do
     customer = create_customer(first_name: 'John', last_name: 'Doe', email: 'john@example.com')
 
