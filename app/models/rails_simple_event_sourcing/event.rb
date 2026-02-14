@@ -26,9 +26,9 @@ module RailsSimpleEventSourcing
 
       aggregate = aggregate_class.new
       self.class.where(aggregate_id:)
-                .where(version: ..version)
-                .order(version: :asc)
-                .each { |e| e.apply(aggregate) }
+          .where(version: ..version)
+          .order(version: :asc)
+          .each { |e| e.apply(aggregate) }
       aggregate.attributes
     end
 
