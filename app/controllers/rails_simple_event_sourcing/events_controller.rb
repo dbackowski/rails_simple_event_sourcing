@@ -10,7 +10,7 @@ module RailsSimpleEventSourcing
 
     def show
       @event = Event.find(params[:id])
-      @aggregate_state = build_aggregate_state
+      @aggregate_state = @event.aggregate_state
       find_adjacent_versions
     end
 
@@ -51,18 +51,6 @@ module RailsSimpleEventSourcing
       scope = Event.where(aggregate_id: @event.aggregate_id)
       @previous_version = scope.where(version: ...@event.version).order(version: :desc).first
       @next_version = scope.where('version > ?', @event.version).order(version: :asc).first
-    end
-
-    def build_aggregate_state
-      return unless @event.aggregate_defined? && @event.aggregate_id.present?
-
-      events = Event.where(aggregate_id: @event.aggregate_id)
-                    .where(version: ..@event.version)
-                    .order(version: :asc)
-
-      aggregate = @event.aggregate_class.new
-      events.each { |e| e.apply(aggregate) }
-      aggregate.attributes
     end
   end
 end

@@ -464,6 +464,25 @@ customer.events.where(created_at: 1.week.ago..Time.now)
 RailsSimpleEventSourcing::Event.where(eventable_type: "Customer", eventable_id: 1)
 ```
 
+**Reconstructing Aggregate State:**
+
+You can reconstruct the aggregate state as it was at any point in time by calling `aggregate_state` on an event. This replays all events for that aggregate up to and including the given event's version, returning the resulting attributes. This is useful for debugging, auditing, or understanding how an aggregate evolved over time.
+
+```ruby
+event = customer.events.last
+event.aggregate_state
+# => {"id"=>1, "first_name"=>"John", "last_name"=>"Doe", "email"=>"john@example.com", ...}
+
+# Compare state at different points in time
+first_event = customer.events.first
+first_event.aggregate_state
+# => {"id"=>1, "first_name"=>"John", "last_name"=>"Doe", ...}
+
+latest_event = customer.events.last
+latest_event.aggregate_state
+# => {"id"=>1, "first_name"=>"Jane", "last_name"=>"Smith", ...}
+```
+
 **Event Structure:**
 - `payload` - Contains the event attributes you defined (as JSON)
 - `metadata` - Contains request context (request ID, IP, user agent, params)
