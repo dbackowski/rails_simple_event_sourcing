@@ -2,7 +2,8 @@
 
 module RailsSimpleEventSourcing
   class CommandHandlerRegistry
-    CommandAlreadyRegisteredError = Class.new(StandardError)
+    class CommandAlreadyRegisteredError < StandardError
+    end
 
     @registry = Concurrent::Map.new
 
