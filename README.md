@@ -21,6 +21,7 @@ If you need a more comprehensive solution, check out:
   - [Update and Delete Operations](#update-and-delete-operations)
   - [Metadata Tracking](#metadata-tracking)
   - [Event Querying](#event-querying)
+  - [Events Viewer](#events-viewer)
 - [Testing](#testing)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -38,6 +39,7 @@ If you need a more comprehensive solution, check out:
 - **Command Handler Registry** - Explicit command-to-handler mapping with fallback to convention
 - **Simple Command Pattern** - Clear command → handler → event flow
 - **PostgreSQL JSONB Storage** - Efficient JSON storage for event payloads and metadata
+- **Built-in Events Viewer** - Web UI for browsing, searching, and inspecting events
 - **Minimal Configuration** - Convention over configuration approach
 
 ## Requirements
@@ -513,6 +515,71 @@ end
 
 **Metadata Outside HTTP Requests:**
 When events are created outside HTTP requests (background jobs, console, tests), metadata will be empty unless you manually set it using `CurrentRequest.metadata = {...}`.
+
+### Events Viewer
+
+The gem ships with a built-in web UI for browsing and inspecting your event log. It is mounted as a Rails engine.
+
+**Setup:**
+
+Mount the engine in your `config/routes.rb`:
+
+```ruby
+Rails.application.routes.draw do
+  mount RailsSimpleEventSourcing::Engine, at: "/event-store"
+end
+```
+
+Then navigate to `/event-store` in your browser to access the viewer.
+
+**Password Protection:**
+
+In production you will likely want to restrict access to the events viewer.
+
+*Using Rack::Auth::Basic middleware:*
+
+```ruby
+Rails.application.routes.draw do
+  mount RailsSimpleEventSourcing::Engine, at: "/event-store",
+    constraints: ->(request) {
+      Rack::Auth::Basic.new(
+        ->(env) { [200, {}, []] },
+        "Event Store"
+      ) { |user, pass|
+        ActiveSupport::SecurityUtils.secure_compare(user, ENV["EVENT_STORE_USER"]) &
+          ActiveSupport::SecurityUtils.secure_compare(pass, ENV["EVENT_STORE_PASSWORD"])
+      }.call(request.env).first != 401
+    }
+end
+```
+
+*Using Devise authentication:*
+
+```ruby
+Rails.application.routes.draw do
+  authenticate :user, ->(user) { user.admin? } do
+    mount RailsSimpleEventSourcing::Engine, at: "/event-store"
+  end
+end
+```
+
+**Features:**
+
+- **Event list** - Paginated table of all events sorted by newest first, showing event type, aggregate, aggregate ID, version, and timestamp
+- **Event detail** - Click any event to view its full payload, metadata, and the reconstructed aggregate state at that version
+- **Version navigation** - Navigate between previous/next versions of the same aggregate from the detail page
+- **Filtering** - Filter events by event type or aggregate type using dropdown selectors
+- **Search** - Search by aggregate ID, or use `key:value` syntax to search within payload and metadata (e.g., `email:john@example.com`)
+
+**Configuration:**
+
+You can configure the number of events displayed per page (defaults to 25):
+
+```ruby
+RailsSimpleEventSourcing.configure do |config|
+  config.events_per_page = 50
+end
+```
 
 ### Model Configuration
 
