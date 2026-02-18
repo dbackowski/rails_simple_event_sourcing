@@ -561,11 +561,11 @@ In production you will likely want to restrict access to the events viewer.
 Rails.application.routes.draw do
   mount Rack::Auth::Basic.new(
     RailsSimpleEventSourcing::Engine,
-    "Event Sourcing"
+    "Event Store"
   ) { |username, password|
     ActiveSupport::SecurityUtils.secure_compare(username, "admin") &
     ActiveSupport::SecurityUtils.secure_compare(password, Rails.application.credentials.event_sourcing_password || "secret")
-  }, at: "/event-sourcing"
+  }, at: "/event-store"
 end
 ```
 
