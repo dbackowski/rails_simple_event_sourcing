@@ -10,8 +10,8 @@
 
 <div class="card">
   <div class="info-bar">
-    <span><%= @total_count %> event<%= @total_count == 1 ? "" : "s" %> found</span>
-    <span>Page <%= @current_page %> of <%= @total_pages %></span>
+    <span><%= @paginator.total_count %> event<%= @paginator.total_count == 1 ? "" : "s" %> found</span>
+    <span>Page <%= @paginator.current_page %> of <%= @paginator.total_pages %></span>
   </div>
 
   <table>
@@ -26,7 +26,7 @@
       </tr>
     </thead>
     <tbody>
-      <% @events.each do |event| %>
+      <% @paginator.records.each do |event| %>
         <tr>
           <td class="text-mono"><%= link_to event.id, event_path(event) %></td>
           <td><span class="badge"><%= event.event_type %></span></td>
@@ -36,7 +36,7 @@
           <td class="text-muted"><%= event.read_attribute(:created_at)&.strftime("%Y-%m-%d %H:%M:%S") %></td>
         </tr>
       <% end %>
-      <% if @events.empty? %>
+      <% if @paginator.records.empty? %>
         <tr>
           <td colspan="6" style="text-align: center; color: #888; padding: 32px;">No events found.</td>
         </tr>

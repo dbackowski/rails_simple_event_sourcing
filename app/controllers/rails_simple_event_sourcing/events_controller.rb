@@ -32,17 +32,11 @@ module RailsSimpleEventSourcing
     end
 
     def paginate(scope)
-      paginator = Paginator.new(
+      @paginator = Paginator.new(
         scope:,
         page: params[:page],
         per_page: RailsSimpleEventSourcing.config.events_per_page
       )
-
-      @total_count = paginator.total_count
-      @per_page = paginator.per_page
-      @total_pages = paginator.total_pages
-      @current_page = paginator.current_page
-      @events = paginator.records
     end
 
     def find_adjacent_versions

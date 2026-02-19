@@ -25,10 +25,8 @@ module RailsSimpleEventSourcing
       return unless aggregate_defined? && aggregate_id.present?
 
       aggregate = aggregate_class.new
-      self.class.where(aggregate_id:)
-          .where(version: ..version)
-          .order(version: :asc)
-          .each { |e| e.apply(aggregate) }
+      aggregate.id = aggregate_id
+      EventPlayer.new(aggregate).replay_stream(up_to_version: version)
       aggregate.attributes
     end
 
