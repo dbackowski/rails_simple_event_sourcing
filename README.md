@@ -88,6 +88,9 @@ RailsSimpleEventSourcing.configure do |config|
   # When true, falls back to convention-based handler resolution
   # When false, requires explicit registration of all handlers
   config.use_naming_convention_fallback = true
+
+  # Number of events displayed per page in the Events Viewer (defaults to 25)
+  config.events_per_page = 50
 end
 ```
 
@@ -586,16 +589,6 @@ end
 - **Version navigation** - Navigate between previous/next versions of the same aggregate from the detail page
 - **Filtering** - Filter events by event type or aggregate type using dropdown selectors
 - **Search** - Search by aggregate ID, or use `key:value` syntax to search within payload and metadata (e.g., `email:john@example.com`)
-
-**Configuration:**
-
-You can configure the number of events displayed per page (defaults to 25):
-
-```ruby
-RailsSimpleEventSourcing.configure do |config|
-  config.events_per_page = 50
-end
-```
 
 ### Model Configuration
 
