@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     rails_simple_event_sourcing (1.0.7)
+      concurrent-ruby (>= 1.1)
       pg (~> 1.1)
       rails (>= 7.1.2)
 

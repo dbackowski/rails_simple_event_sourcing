@@ -548,11 +548,11 @@ Mount the engine in your `config/routes.rb`:
 
 ```ruby
 Rails.application.routes.draw do
-  mount RailsSimpleEventSourcing::Engine, at: "/event-store"
+  mount RailsSimpleEventSourcing::Engine, at: "/events"
 end
 ```
 
-Then navigate to `/event-store` in your browser to access the viewer.
+Then navigate to `/events` in your browser to access the viewer.
 
 **Password Protection:**
 
@@ -564,11 +564,11 @@ In production you will likely want to restrict access to the events viewer.
 Rails.application.routes.draw do
   mount Rack::Auth::Basic.new(
     RailsSimpleEventSourcing::Engine,
-    "Event Store"
+    "Events"
   ) { |username, password|
     ActiveSupport::SecurityUtils.secure_compare(username, "admin") &
     ActiveSupport::SecurityUtils.secure_compare(password, Rails.application.credentials.event_sourcing_password || "secret")
-  }, at: "/event-store"
+  }, at: "/events"
 end
 ```
 
@@ -577,7 +577,7 @@ end
 ```ruby
 Rails.application.routes.draw do
   authenticate :user, ->(user) { user.admin? } do
-    mount RailsSimpleEventSourcing::Engine, at: "/event-store"
+    mount RailsSimpleEventSourcing::Engine, at: "/events"
   end
 end
 ```
@@ -639,10 +639,6 @@ class Customer < ApplicationRecord
 
   scope :active, -> { where(deleted_at: nil) }
   scope :deleted, -> { where.not(deleted_at: nil) }
-
-  def soft_delete
-    update(deleted_at: Time.current)
-  end
 end
 
 # Event

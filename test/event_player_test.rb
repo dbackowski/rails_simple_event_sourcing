@@ -86,6 +86,15 @@ class EventPlayerTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassL
     assert_equal 'Doe', aggregate.last_name
   end
 
+  test 'apply raises on unknown payload attribute' do
+    aggregate = Customer.new
+    event = build_create_event
+    event.payload['nonexistent_field'] = 'value'
+
+    error = assert_raises(RuntimeError) { event.apply(aggregate) }
+    assert_match "Unknown attribute 'nonexistent_field' on Customer", error.message
+  end
+
   test 'replay_and_apply replays history then applies new event' do
     customer = create_customer(first_name: 'Jane', last_name: 'Doe', email: 'jane@example.com')
     update_event = build_update_event(aggregate_id: customer.id, first_name: 'Janet', last_name: 'Smith')

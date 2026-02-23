@@ -17,7 +17,9 @@ module RailsSimpleEventSourcing
 
     def apply(aggregate)
       payload.each do |key, value|
-        aggregate.send("#{key}=", value) if aggregate.respond_to?("#{key}=")
+        raise "Unknown attribute '#{key}' on #{aggregate.class}" unless aggregate.respond_to?("#{key}=")
+
+        aggregate.send("#{key}=", value)
       end
     end
 

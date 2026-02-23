@@ -26,6 +26,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'pg', '~> 1.1'
   spec.add_dependency 'rails', '>= 7.1.2'
+  spec.add_dependency 'concurrent-ruby', '>= 1.1'
   spec.add_development_dependency 'rubocop'
   spec.add_development_dependency 'rubocop-rails'
 end

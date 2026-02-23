@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'concurrent'
 require_relative 'aggregate_repository'
 require_relative 'command_handler'
 require_relative 'command_handlers/base'

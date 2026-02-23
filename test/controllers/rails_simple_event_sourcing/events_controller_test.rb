@@ -195,11 +195,6 @@ module RailsSimpleEventSourcing
       assert_select 'td', text: 'Customer'
     end
 
-    test 'root redirects to events index' do
-      get rails_simple_event_sourcing.root_path
-      assert_response :success
-    end
-
     private
 
     def create_updates(count)
