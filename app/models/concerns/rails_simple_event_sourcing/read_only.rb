@@ -13,6 +13,10 @@ module RailsSimpleEventSourcing
         @write_access_enabled = true
       end
 
+      def disable_write_access!
+        @write_access_enabled = false
+      end
+
       private
 
       def write_access_enabled

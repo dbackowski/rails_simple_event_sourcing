@@ -231,4 +231,32 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       )
     end
   end
+
+  test 'aggregate instance returned from command handler is read-only after event creation' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
+    )
+    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    customer = result.data
+
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      customer.update!(last_name: 'Hacked')
+    end
+  end
+
+  test 'event instance is read-only after creation' do
+    event = Customer::Events::CustomerCreated.create!(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com',
+      created_at: Time.zone.now,
+      updated_at: Time.zone.now
+    )
+
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      event.update!(payload: { hacked: true })
+    end
+  end
 end

@@ -14,6 +14,7 @@ module RailsSimpleEventSourcing
 
     before_validation :setup_for_create, on: :create
     before_save :persist_aggregate, if: :aggregate_defined?
+    after_create :disable_write_access!
 
     def apply(aggregate)
       payload.each do |key, value|
@@ -69,6 +70,7 @@ module RailsSimpleEventSourcing
 
       aggregate_repository.save!(@aggregate)
       self.aggregate_id = @aggregate.id
+      @aggregate.disable_write_access!
     end
 
     def aggregate_repository
