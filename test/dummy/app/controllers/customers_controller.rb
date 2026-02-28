@@ -5,13 +5,10 @@ class CustomersController < ApplicationController
       last_name: params[:last_name],
       email: params[:email]
     )
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      render json: handler.data
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { |data| render json: data }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 
   def update
@@ -21,23 +18,17 @@ class CustomersController < ApplicationController
       last_name: params[:last_name],
       email: params[:email]
     )
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      render json: handler.data
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { |data| render json: data }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 
   def destroy
     cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      head :no_content
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { head :no_content }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 end

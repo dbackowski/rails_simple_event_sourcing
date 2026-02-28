@@ -173,10 +173,16 @@ Handlers can be discovered in two ways:
 2. **Convention-based** - Using naming convention mapping (can be disabled via configuration)
 
 **Result Object:**
-The `Result` struct has three fields:
+The `Result` class has three fields:
 - `success?` - Boolean indicating if the operation succeeded
 - `data` - Data to return (usually the aggregate/model instance)
 - `errors` - Array or hash of error messages when `success?` is false
+
+It supports a chainable API for use in controllers:
+- `on_success { |data| }` - Executes the block (yielding `data`) if the result is successful
+- `on_failure { |errors| }` - Executes the block (yielding `errors`) if the result failed
+
+Both methods return `self`, so they can be chained. The predicate `success?` remains available for use in conditionals and tests.
 
 **Helper Methods:**
 The base class provides convenience methods:
@@ -202,7 +208,7 @@ class Customer
         success_result(data: event.aggregate)
 
         # Or create Result directly
-        # RailsSimpleEventSourcing::Result.new(success?: true, data: event.aggregate)
+        # RailsSimpleEventSourcing::Result.new(success: true, data: event.aggregate)
       end
     end
   end
@@ -358,13 +364,10 @@ class CustomersController < ApplicationController
       last_name: params[:last_name],
       email: params[:email]
     )
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      render json: handler.data
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { |data| render json: data }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 end
 ```
@@ -382,13 +385,10 @@ class CustomersController < ApplicationController
       last_name: params[:last_name],
       email: params[:email]
     )
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      render json: handler.data
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { |data| render json: data }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 end
 ```
@@ -399,13 +399,10 @@ end
 class CustomersController < ApplicationController
   def destroy
     cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
-    handler = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
 
-    if handler.success?
-      head :no_content
-    else
-      render json: { errors: handler.errors }, status: :unprocessable_entity
-    end
+    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+      .on_success { head :no_content }
+      .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
 end
 ```
