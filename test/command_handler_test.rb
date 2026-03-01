@@ -83,7 +83,7 @@ class CommandHandlerTest < ActiveSupport::TestCase
   test 'resolves handler from registry before falling back to naming convention' do
     dummy_handler_class = Class.new(RailsSimpleEventSourcing::CommandHandlers::Base) do
       def call
-        success_result(data: 'from_registry')
+        success(data: 'from_registry')
       end
     end
 

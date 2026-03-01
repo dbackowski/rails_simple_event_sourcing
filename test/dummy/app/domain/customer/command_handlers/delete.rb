@@ -7,7 +7,7 @@ class Customer
           deleted_at: Time.zone.now
         )
 
-        success_result
+        success
       end
     end
   end

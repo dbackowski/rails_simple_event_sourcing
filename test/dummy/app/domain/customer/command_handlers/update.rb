@@ -10,7 +10,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        success_result(data: event.aggregate)
+        success(data: event.aggregate)
       end
     end
   end

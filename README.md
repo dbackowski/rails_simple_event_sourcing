@@ -178,16 +178,40 @@ The `Result` class has three fields:
 - `data` - Data to return (usually the aggregate/model instance)
 - `errors` - Array or hash of error messages when `success?` is false
 
+Use the factory methods to build results:
+
+```ruby
+# Successful result
+RailsSimpleEventSourcing::Result.success(data: customer)
+
+# Failed result
+RailsSimpleEventSourcing::Result.failure(errors: { email: ["already taken"] })
+```
+
 It supports a chainable API for use in controllers:
 - `on_success { |data| }` - Executes the block (yielding `data`) if the result is successful
 - `on_failure { |errors| }` - Executes the block (yielding `errors`) if the result failed
 
 Both methods return `self`, so they can be chained. The predicate `success?` remains available for use in conditionals and tests.
 
-**Helper Methods:**
-The base class provides convenience methods:
-- `success_result(data:)` - Creates a successful result
-- `failure_result(errors:)` - Creates a failed result
+```ruby
+result = RailsSimpleEventSourcing::Result.success(data: customer)
+
+# Chainable (preferred in controllers)
+result
+  .on_success { |data| render json: data }
+  .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
+
+# Predicate (preferred in tests)
+result.success? # => true
+result.data     # => #<Customer ...>
+result.errors   # => nil
+```
+
+**Helper Methods in Handlers:**
+Inside a command handler, `success` and `failure` are delegated to `RailsSimpleEventSourcing::Result`:
+- `success(data:)` - delegates to `RailsSimpleEventSourcing::Result.success`
+- `failure(errors:)` - delegates to `RailsSimpleEventSourcing::Result.failure`
 
 **Example - Basic Handler:**
 
@@ -204,11 +228,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        # Using helper method (recommended)
-        success_result(data: event.aggregate)
-
-        # Or create Result directly
-        # RailsSimpleEventSourcing::Result.new(success: true, data: event.aggregate)
+        success(data: event.aggregate)
       end
     end
   end
@@ -230,11 +250,11 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        success_result(data: event.aggregate)
+        success(data: event.aggregate)
       rescue ActiveRecord::RecordNotUnique
-        failure_result(errors: ["Email has already been taken"])
+        failure(errors: ["Email has already been taken"])
       rescue StandardError => e
-        failure_result(errors: ["An error occurred: #{e.message}"])
+        failure(errors: ["An error occurred: #{e.message}"])
       end
     end
   end

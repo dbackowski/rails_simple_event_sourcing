@@ -10,7 +10,7 @@ class Customer
           updated_at: Time.zone.now
         )
 
-        success_result(data: event.aggregate)
+        success(data: event.aggregate)
       rescue ActiveRecord::RecordNotUnique
         Customer::Events::CustomerEmailTaken.create!(
           first_name: @command.first_name,
@@ -18,7 +18,7 @@ class Customer
           email: @command.email
         )
 
-        failure_result(errors: { email: ['already taken'] })
+        failure(errors: { email: ['already taken'] })
       end
     end
   end
