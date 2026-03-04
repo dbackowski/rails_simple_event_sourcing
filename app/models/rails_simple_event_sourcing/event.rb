@@ -9,8 +9,13 @@ module RailsSimpleEventSourcing
     belongs_to :eventable, polymorphic: true, optional: true
     alias aggregate eventable
 
-    validates :version, presence: true, numericality: { only_integer: true, greater_than: 0 }
-    validates :version, uniqueness: { scope: :aggregate_id }, if: -> { aggregate_id.present? }
+    validates :version,
+              presence: true,
+              numericality: { only_integer: true, greater_than: 0 },
+              if: -> { aggregate_id.present? }
+    validates :version,
+              uniqueness: { scope: :aggregate_id },
+              if: -> { aggregate_id.present? }
 
     before_validation :setup_for_create, on: :create
     before_save :persist_aggregate, if: :aggregate_defined?
@@ -55,12 +60,12 @@ module RailsSimpleEventSourcing
     end
 
     def set_version
+      return unless aggregate_defined?
+
       self.version ||= calculate_next_version
     end
 
     def calculate_next_version
-      return 1 unless aggregate_id
-
       max_version = Event.where(aggregate_id:).maximum(:version) || 0
       max_version + 1
     end

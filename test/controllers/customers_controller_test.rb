@@ -73,6 +73,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'John', customer_event.payload['first_name']
     assert_equal 'Doe', customer_event.payload['last_name']
     assert_equal 'jdoe@example.com', customer_event.payload['email']
+    assert_nil customer_event.version
     assert_not_empty customer_event.metadata['request_id']
     assert_equal '127.0.0.1', customer_event.metadata['request_ip']
     assert_not_empty customer_event.metadata['request_params']

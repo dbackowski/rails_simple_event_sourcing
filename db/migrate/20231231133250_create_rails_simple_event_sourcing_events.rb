@@ -7,7 +7,7 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
       t.string :type, null: false
       t.string :event_type, null: false
       t.string :aggregate_id
-      t.integer :version, null: false
+      t.integer :version
       t.jsonb :payload
       t.jsonb :metadata
 
