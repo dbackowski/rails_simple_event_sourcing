@@ -21,7 +21,7 @@ module RailsSimpleEventSourcing
     private
 
     def find_with_lock(aggregate_id)
-      @aggregate_class.find(aggregate_id).lock!
+      @aggregate_class.lock.find(aggregate_id)
     end
 
     def build_new

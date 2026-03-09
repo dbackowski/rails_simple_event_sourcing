@@ -29,6 +29,22 @@ class AggregateRepositoryTest < ActiveSupport::TestCase
     assert_equal customer.id, aggregate.id
   end
 
+  test 'acquires a FOR UPDATE lock when finding an existing aggregate' do
+    customer = create_customer
+    queries = []
+
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      queries << payload[:sql]
+    end
+
+    @repository.find_or_build(customer.id)
+
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    assert queries.any? { |sql| sql.include?('FOR UPDATE') },
+           "Expected a FOR UPDATE query, got:\n#{queries.join("\n")}"
+  end
+
   test 'raises RecordNotFound when aggregate does not exist' do
     assert_raises(ActiveRecord::RecordNotFound) do
       @repository.find_or_build(-1)
