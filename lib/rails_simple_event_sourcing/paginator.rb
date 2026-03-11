@@ -37,33 +37,31 @@ module RailsSimpleEventSourcing
 
     def fetch_records
       if @cursor.nil?
-        fetch_first_page
+        fetch_forward(@scope.order(id: :desc), has_prev: false)
       elsif @direction == :prev
-        fetch_prev_page
+        fetch_backward(@scope.where('id > ?', @cursor).order(id: :asc))
       else
-        fetch_next_page
+        fetch_forward(@scope.where(id: ...@cursor).order(id: :desc), has_prev: true)
       end
     end
 
-    def fetch_first_page
-      rows = @scope.order(id: :desc).limit(@per_page + 1).to_a
-      @has_prev = false
-      @has_next = rows.size > @per_page
-      rows.first(@per_page)
+    def fetch_forward(scoped_query, has_prev:)
+      rows, has_more = paginate(scoped_query)
+      @has_prev = has_prev
+      @has_next = has_more
+      rows
     end
 
-    def fetch_next_page
-      rows = @scope.where(id: ...@cursor).order(id: :desc).limit(@per_page + 1).to_a
-      @has_prev = true
-      @has_next = rows.size > @per_page
-      rows.first(@per_page)
-    end
-
-    def fetch_prev_page
-      rows = @scope.where('id > ?', @cursor).order(id: :asc).limit(@per_page + 1).to_a
+    def fetch_backward(scoped_query)
+      rows, has_more = paginate(scoped_query)
       @has_next = true
-      @has_prev = rows.size > @per_page
-      rows.first(@per_page).reverse
+      @has_prev = has_more
+      rows.reverse
+    end
+
+    def paginate(scoped_query)
+      rows = scoped_query.limit(@per_page + 1).to_a
+      [rows.first(@per_page), rows.size > @per_page]
     end
   end
 end
