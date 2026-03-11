@@ -10,6 +10,7 @@ require_relative 'event_search'
 require_relative 'paginator'
 require_relative 'result'
 require_relative 'command_handler_registry'
+require_relative 'event_bus'
 
 module RailsSimpleEventSourcing
   class Engine < ::Rails::Engine

@@ -20,6 +20,7 @@ module RailsSimpleEventSourcing
     before_validation :setup_for_create, on: :create
     before_save :persist_aggregate, if: :aggregate_defined?
     after_create :disable_write_access!
+    after_commit :dispatch_to_event_bus, on: :create
 
     def apply(aggregate)
       payload.each do |key, value|
@@ -80,6 +81,10 @@ module RailsSimpleEventSourcing
 
     def aggregate_repository
       @aggregate_repository ||= AggregateRepository.new(aggregate_class)
+    end
+
+    def dispatch_to_event_bus
+      EventBus.dispatch(self)
     end
   end
 end

@@ -22,6 +22,7 @@ If you need a more comprehensive solution, check out:
   - [Metadata Tracking](#metadata-tracking)
   - [Event Querying](#event-querying)
   - [Events Viewer](#events-viewer)
+  - [Event Subscriptions](#event-subscriptions)
 - [Testing](#testing)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -40,12 +41,13 @@ If you need a more comprehensive solution, check out:
 - **Simple Command Pattern** - Clear command → handler → event flow
 - **PostgreSQL JSONB Storage** - Efficient JSON storage for event payloads and metadata
 - **Built-in Events Viewer** - Web UI for browsing, searching, and inspecting events
+- **Event Subscriptions** - React to events after they are committed (send emails, send webhooks, etc.)
 - **Minimal Configuration** - Convention over configuration approach
 
 ## Requirements
 
-- **Ruby**: 2.7 or higher
-- **Rails**: 6.0 or higher
+- **Ruby**: 3.1 or higher
+- **Rails**: 7.1.2 or higher
 - **Database**: PostgreSQL 9.4+ (requires JSONB support)
 
 ## Installation
@@ -664,6 +666,86 @@ class Customer::Events::CustomerDeleted < RailsSimpleEventSourcing::Event
   event_attributes :deleted_at
 
   # No need to implement apply - deleted_at will be automatically set on the aggregate
+end
+```
+
+### Event Subscriptions
+
+The `EventBus` lets you react to events after they are persisted and committed to the database. Subscribers run **after the transaction commits**, so they never execute against data that could later be rolled back.
+
+**Registering subscribers:**
+
+```ruby
+# config/initializers/rails_simple_event_sourcing.rb
+Rails.application.config.after_initialize do
+  RailsSimpleEventSourcing::EventBus.subscribe(
+    Customer::Events::CustomerCreated,
+    Subscribers::SendWelcomeEmail
+  )
+
+  RailsSimpleEventSourcing::EventBus.subscribe(
+    Customer::Events::CustomerCreated,
+    Subscribers::CreateStripeCustomer
+  )
+
+  RailsSimpleEventSourcing::EventBus.subscribe(
+    Customer::Events::CustomerDeleted,
+    Subscribers::CancelStripeSubscription
+  )
+end
+```
+
+**Writing a subscriber:**
+
+Any object that responds to `call(event)` works — a class with `.call`, a lambda, or a proc:
+
+```ruby
+module Subscribers
+  class SendWelcomeEmail
+    def self.call(event)
+      WelcomeMailer.with(email: event.email).deliver_later
+    end
+  end
+end
+```
+
+**Subscribing to all events:**
+
+Subscribe to `RailsSimpleEventSourcing::Event` to receive every event regardless of type — useful for audit loggers or metrics:
+
+```ruby
+RailsSimpleEventSourcing::EventBus.subscribe(
+  RailsSimpleEventSourcing::Event,
+  Subscribers::AuditLogger
+)
+```
+
+If you subscribe the same callable to both a specific event class and `RailsSimpleEventSourcing::Event`, it will be called twice — once for each subscription. This is intentional and consistent with standard pub/sub behaviour.
+
+**Testing with EventBus:**
+
+Call `RailsSimpleEventSourcing::EventBus.reset!` in your test `setup` to clear all subscriptions between tests:
+
+```ruby
+class MyTest < ActiveSupport::TestCase
+  setup do
+    RailsSimpleEventSourcing::EventBus.reset!
+  end
+
+  test "sends welcome email on customer created" do
+    emails = []
+    RailsSimpleEventSourcing::EventBus.subscribe(
+      Customer::Events::CustomerCreated,
+      ->(event) { emails << event.email }
+    )
+
+    Customer::Events::CustomerCreated.create!(
+      first_name: "John", last_name: "Doe", email: "john@example.com",
+      created_at: Time.zone.now, updated_at: Time.zone.now
+    )
+
+    assert_includes emails, "john@example.com"
+  end
 end
 ```
 
