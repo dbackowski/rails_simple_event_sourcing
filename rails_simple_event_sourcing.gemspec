@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary     = 'Rails engine for simple event sourcing.'
   spec.description = 'Rails simple event sourcing engine.'
   spec.license                = 'MIT'
-  spec.required_ruby_version = '>= 3.1'
+  spec.required_ruby_version = '>= 3.2'
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the "allowed_push_host"
   # to allow pushing to a single host or delete this section to allow pushing to any host.

@@ -20,8 +20,8 @@ class EventBusTest < ActiveSupport::TestCase
   test 'dispatches to multiple subscribers for the same event class' do
     calls = []
 
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(e) { calls << :first })
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(e) { calls << :second })
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(_e) { calls << :first })
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(_e) { calls << :second })
 
     create_customer_created_event
 
