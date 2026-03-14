@@ -25,6 +25,10 @@ module RailsSimpleEventSourcing
       @success
     end
 
+    def failure?
+      !@success
+    end
+
     def on_success(&block)
       raise ArgumentError, 'Block required' unless block
 

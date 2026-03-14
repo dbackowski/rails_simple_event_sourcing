@@ -177,6 +177,7 @@ Handlers can be discovered in two ways:
 **Result Object:**
 The `Result` class has three fields:
 - `success?` - Boolean indicating if the operation succeeded
+- `failure?` - Boolean indicating if the operation failed (inverse of `success?`)
 - `data` - Data to return (usually the aggregate/model instance)
 - `errors` - Array or hash of error messages when `success?` is false
 
@@ -194,7 +195,7 @@ It supports a chainable API for use in controllers:
 - `on_success { |data| }` - Executes the block (yielding `data`) if the result is successful
 - `on_failure { |errors| }` - Executes the block (yielding `errors`) if the result failed
 
-Both methods return `self`, so they can be chained. The predicate `success?` remains available for use in conditionals and tests.
+Both methods return `self`, so they can be chained. The predicates `success?` and `failure?` remain available for use in conditionals and tests.
 
 ```ruby
 result = RailsSimpleEventSourcing::Result.success(data: customer)
@@ -205,9 +206,10 @@ result
   .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
 
 # Predicate (preferred in tests)
-result.success? # => true
-result.data     # => #<Customer ...>
-result.errors   # => nil
+result.success?  # => true
+result.failure?  # => false
+result.data      # => #<Customer ...>
+result.errors    # => nil
 ```
 
 **Helper Methods in Handlers:**

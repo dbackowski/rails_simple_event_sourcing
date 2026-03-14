@@ -8,7 +8,7 @@ class CommandHandlerTest < ActiveSupport::TestCase
 
     result = RailsSimpleEventSourcing::CommandHandler.new(command).call
 
-    assert_not result.success?
+    assert result.failure?
     assert_includes result.errors[:first_name], "can't be blank"
     assert_includes result.errors[:last_name], "can't be blank"
     assert_includes result.errors[:email], "can't be blank"
