@@ -24,16 +24,6 @@ class CommandHandlerTest < ActiveSupport::TestCase
     assert_equal 'John', result.data.first_name
   end
 
-  test 'resolves handler via naming convention fallback' do
-    assert RailsSimpleEventSourcing.config.use_naming_convention_fallback
-
-    command = Customer::Commands::Create.new(first_name: 'Jane', last_name: 'Doe', email: 'jane@example.com')
-
-    result = RailsSimpleEventSourcing::CommandHandler.new(command).call
-
-    assert result.success?
-  end
-
   test 'raises CommandHandlerNotFoundError when no handler is found' do
     unhandled_command_class = Class.new(RailsSimpleEventSourcing::Commands::Base)
 
@@ -96,6 +86,23 @@ class CommandHandlerTest < ActiveSupport::TestCase
     assert_equal 'from_registry', result.data
   ensure
     RailsSimpleEventSourcing::CommandHandlerRegistry.deregister(Customer::Commands::Create)
+  end
+
+  test 'convention fallback attempts lookup with unchanged name when command lacks ::Commands:: segment' do
+    stub_command_class = Class.new(RailsSimpleEventSourcing::Commands::Base) do
+      def self.to_s
+        'FlatCommand'
+      end
+    end
+
+    command = stub_command_class.new
+
+    error = assert_raises(RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError) do
+      RailsSimpleEventSourcing::CommandHandler.new(command).call
+    end
+
+    assert_match(/No handler found for FlatCommand/, error.message)
+    assert_match(/Tried convention-based lookup: FlatCommand/, error.message)
   end
 
   test 'does not invoke handler when command validation fails' do

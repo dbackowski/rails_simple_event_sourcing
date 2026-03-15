@@ -3,7 +3,7 @@ class Customer
     class Delete < RailsSimpleEventSourcing::CommandHandlers::Base
       def call
         Customer::Events::CustomerDeleted.create!(
-          aggregate_id: @command.aggregate_id,
+          aggregate_id: command.aggregate_id,
           deleted_at: Time.zone.now
         )
 

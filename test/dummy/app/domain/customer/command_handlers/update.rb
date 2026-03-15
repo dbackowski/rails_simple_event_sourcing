@@ -3,10 +3,10 @@ class Customer
     class Update < RailsSimpleEventSourcing::CommandHandlers::Base
       def call
         event = Customer::Events::CustomerUpdated.create!(
-          aggregate_id: @command.aggregate_id,
-          first_name: @command.first_name,
-          last_name: @command.last_name,
-          email: @command.email,
+          aggregate_id: command.aggregate_id,
+          first_name: command.first_name,
+          last_name: command.last_name,
+          email: command.email,
           updated_at: Time.zone.now
         )
 
