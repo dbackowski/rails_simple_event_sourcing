@@ -11,12 +11,12 @@ module RailsSimpleEventSourcing
     def call
       return Result.failure(errors: @command.errors) unless @command.valid?
 
-      initialize_command_handler.call
+      build_handler.call
     end
 
     private
 
-    def initialize_command_handler
+    def build_handler
       handler_class = find_handler_class
       raise CommandHandlerNotFoundError, handler_not_found_message unless handler_class
 
@@ -24,21 +24,26 @@ module RailsSimpleEventSourcing
     end
 
     def find_handler_class
-      handler_class = CommandHandlerRegistry.handler_for(@command.class)
+      CommandHandlerRegistry.handler_for(@command.class) || convention_handler_class
+    end
 
-      if handler_class.nil? && RailsSimpleEventSourcing.config.use_naming_convention_fallback
-        @convention_handler_name = @command.class.to_s.sub('::Commands::', '::CommandHandlers::')
-        handler_class = @convention_handler_name.safe_constantize
-      end
+    def convention_handler_class
+      return unless RailsSimpleEventSourcing.config.use_naming_convention_fallback
 
-      handler_class
+      convention_handler_name.safe_constantize
+    end
+
+    def convention_handler_name
+      @convention_handler_name ||= @command.class.to_s.sub('::Commands::', '::CommandHandlers::')
     end
 
     def handler_not_found_message
-      message = "No handler found for #{@command.class}."
-      message += " Tried convention-based lookup: #{@convention_handler_name} (not found)." if @convention_handler_name
-      message += " Register one with CommandHandlerRegistry.register(#{@command.class}, YourHandlerClass)"
-      message
+      parts = ["No handler found for #{@command.class}."]
+      if RailsSimpleEventSourcing.config.use_naming_convention_fallback
+        parts << " Tried convention-based lookup: #{convention_handler_name} (not found)."
+      end
+      parts << " Register one with CommandHandlerRegistry.register(#{@command.class}, YourHandlerClass)"
+      parts.join
     end
   end
 end
