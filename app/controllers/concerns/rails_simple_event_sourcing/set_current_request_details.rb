@@ -10,10 +10,14 @@ module RailsSimpleEventSourcing
       private
 
       def set_event_metadata
-        CurrentRequest.metadata = event_metadata
+        CurrentRequest.metadata = default_event_metadata.merge(custom_event_metadata)
       end
 
-      def event_metadata
+      def custom_event_metadata
+        {}
+      end
+
+      def default_event_metadata
         parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
 
         {

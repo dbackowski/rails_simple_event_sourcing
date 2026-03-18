@@ -91,7 +91,7 @@ class EventPlayerTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassL
     event = build_create_event
     event.payload['nonexistent_field'] = 'value'
 
-    error = assert_raises(RuntimeError) { event.apply(aggregate) }
+    error = assert_raises(ArgumentError) { event.apply(aggregate) }
     assert_match "Unknown attribute 'nonexistent_field' on Customer", error.message
   end
 

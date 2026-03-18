@@ -534,23 +534,36 @@ By default, the following is captured:
 - `request_ip` - Client IP address
 - `request_params` - Request parameters (filtered using Rails parameter filter)
 
-**Customizing Metadata:**
-Override the `event_metadata` method in your controller:
+**Adding Custom Metadata:**
+Override `custom_event_metadata` to add your own fields — they are merged into the defaults:
 
 ```ruby
 class ApplicationController < ActionController::Base
   include RailsSimpleEventSourcing::SetCurrentRequestDetails
 
-  def event_metadata
-    parameter_filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+  def custom_event_metadata
+    {
+      current_user_id: current_user&.id,
+      tenant_id: current_tenant&.id
+    }
+  end
+end
+```
 
+The method must return a hash. Any keys it returns are merged on top of the default metadata (custom keys take precedence on collision).
+
+**Overriding Default Metadata Entirely:**
+If you need full control over what is captured, override `default_event_metadata` instead:
+
+```ruby
+class ApplicationController < ActionController::Base
+  include RailsSimpleEventSourcing::SetCurrentRequestDetails
+
+  def default_event_metadata
     {
       request_id: request.uuid,
-      request_user_agent: request.user_agent,
-      request_ip: request.ip,
-      request_params: parameter_filter.filter(request.params),
-      current_user_id: current_user&.id,  # Add custom fields
-      tenant_id: current_tenant&.id
+      request_ip: request.ip
+      # only keep what you need
     }
   end
 end
