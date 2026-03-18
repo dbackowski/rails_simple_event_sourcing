@@ -38,12 +38,11 @@ module RailsSimpleEventSourcing
     end
 
     def handler_not_found_message
-      parts = ["No handler found for #{@command.class}."]
+      msg = "No handler found for #{@command.class}."
       if RailsSimpleEventSourcing.config.use_naming_convention_fallback
-        parts << " Tried convention-based lookup: #{convention_handler_name} (not found)."
+        msg += " Tried convention-based lookup: #{convention_handler_name} (not found)."
       end
-      parts << " Register one with CommandHandlerRegistry.register(#{@command.class}, YourHandlerClass)"
-      parts.join
+      msg + " Register one with CommandHandlerRegistry.register(#{@command.class}, YourHandlerClass)"
     end
   end
 end

@@ -29,17 +29,17 @@ module RailsSimpleEventSourcing
       !@success
     end
 
-    def on_success(&block)
-      raise ArgumentError, 'Block required' unless block
+    def on_success
+      raise ArgumentError, 'Block required' unless block_given?
 
-      block.call(data) if success?
+      yield data if success?
       self
     end
 
-    def on_failure(&block)
-      raise ArgumentError, 'Block required' unless block
+    def on_failure
+      raise ArgumentError, 'Block required' unless block_given?
 
-      block.call(errors) unless success?
+      yield errors unless success?
       self
     end
   end
