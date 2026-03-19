@@ -107,7 +107,11 @@ HTTP Request → Controller → Command → CommandHandler → Event → Aggrega
                    ↓           ↓            ↓             ↓          ↓
               Pass data   Parameters    Validation +   Immutable   Database
                           + Validation   Business      Storage
-                            Rules        Logic
+                            Rules        Logic          ↓
+                                                     EventBus
+                                                        ↓
+                                                    Subscribers
+                                                   (after commit)
 ```
 
 **Flow breakdown:**
@@ -116,6 +120,8 @@ HTTP Request → Controller → Command → CommandHandler → Event → Aggrega
 3. **CommandHandler** - Validates command, executes business logic, creates event
 4. **Event** - Immutable record of what happened
 5. **Aggregate** - Model updated via event
+6. **EventBus** - After the transaction commits, notifies registered subscribers
+7. **Subscribers** - React to events (send emails, sync external systems, etc.)
 
 ### Directory Structure
 
@@ -712,7 +718,9 @@ end
 
 **Writing a subscriber:**
 
-Any object that responds to `call(event)` works — a class with `.call`, a lambda, or a proc:
+Any object that responds to `call(event)` works — a class with `.call`, a lambda, or a proc.
+
+Subscribers are called synchronously within the request cycle, so you should **delegate work to a background job** (e.g., `deliver_later`, `perform_later`) to avoid blocking the response. This also provides isolation between subscribers — if one subscriber raises an exception, it won't prevent the remaining subscribers for the same event from running.
 
 ```ruby
 module Subscribers
