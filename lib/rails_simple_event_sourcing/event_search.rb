@@ -23,7 +23,7 @@ module RailsSimpleEventSourcing
     def filter_by_event_type
       return if @event_type.blank?
 
-      @scope = @scope.where(event_type: @event_type)
+      @scope = @scope.where(type: @event_type)
     end
 
     def filter_by_aggregate

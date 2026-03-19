@@ -19,7 +19,7 @@ module RailsSimpleEventSourcing
     def event_types
       return Event.descendants.map(&:name).sort if Rails.env.production?
 
-      Event.distinct.pluck(:event_type).sort
+      Event.distinct.pluck(:type).sort
     end
 
     def aggregates

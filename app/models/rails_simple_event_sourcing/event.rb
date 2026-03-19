@@ -49,7 +49,6 @@ module RailsSimpleEventSourcing
 
     def setup_event_fields
       enable_write_access!
-      self.event_type = self.class
       self.metadata = CurrentRequest.metadata&.compact&.presence
     end
 

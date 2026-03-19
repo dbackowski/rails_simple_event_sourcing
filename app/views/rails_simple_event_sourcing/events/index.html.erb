@@ -28,7 +28,7 @@
       <% @paginator.records.each do |event| %>
         <tr>
           <td class="text-mono"><%= link_to event.id, event_path(event) %></td>
-          <td><span class="badge"><%= event.event_type %></span></td>
+          <td><span class="badge"><%= event.type %></span></td>
           <td><%= event.aggregate_class&.name || "-" %></td>
           <td class="text-mono"><%= event.aggregate_id || "-" %></td>
           <td><%= event.version %></td>

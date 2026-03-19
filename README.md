@@ -479,7 +479,7 @@ event.metadata
 #     "request_user_agent"=>"curl/8.6.0", ...}
 
 # Query events by type
-RailsSimpleEventSourcing::Event.where(event_type: "Customer::Events::CustomerCreated")
+RailsSimpleEventSourcing::Event.where(type: "Customer::Events::CustomerCreated")
 
 # Get events in a date range
 customer.events.where(created_at: 1.week.ago..Time.now)
@@ -510,7 +510,7 @@ latest_event.aggregate_state
 **Event Structure:**
 - `payload` - Contains the event attributes you defined (as JSON)
 - `metadata` - Contains request context (request ID, IP, user agent, params)
-- `event_type` - The event class name
+- `type` - The event class name (Rails STI column)
 - `aggregate_id` - Links to the aggregate instance
 - `eventable` - Polymorphic relation to the aggregate
 

@@ -28,14 +28,12 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
     t.string "eventable_type"
     t.bigint "eventable_id"
     t.string "type", null: false
-    t.string "event_type", null: false
     t.string "aggregate_id"
     t.integer "version"
     t.jsonb "payload"
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["event_type"], name: "index_rails_simple_event_sourcing_events_on_event_type"
     t.index ["eventable_type", "aggregate_id", "version"], name: "index_events_on_eventable_type_and_aggregate_id_and_version", unique: true
     t.index ["eventable_type", "eventable_id"], name: "index_rails_simple_event_sourcing_events_on_eventable"
     t.index ["metadata"], name: "index_rails_simple_event_sourcing_events_on_metadata", using: :gin

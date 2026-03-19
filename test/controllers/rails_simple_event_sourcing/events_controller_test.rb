@@ -145,7 +145,7 @@ module RailsSimpleEventSourcing
     test 'show returns success' do
       get rails_simple_event_sourcing.event_path(@event)
       assert_response :success
-      assert_select '.badge', text: @event.event_type
+      assert_select '.badge', text: @event.type
     end
 
     test 'show displays payload' do
