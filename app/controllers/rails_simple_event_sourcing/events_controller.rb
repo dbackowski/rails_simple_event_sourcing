@@ -31,7 +31,7 @@ module RailsSimpleEventSourcing
     def search_events
       EventSearch.new(
         scope: Event.all,
-        event_type: params[:event_type],
+        type: params[:event_type],
         aggregate: params[:aggregate],
         query: params[:q]
       ).call

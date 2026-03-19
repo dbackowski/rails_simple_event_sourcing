@@ -4,15 +4,15 @@ module RailsSimpleEventSourcing
   class EventSearch
     KEY_VALUE_PATTERN = /\A([^:]+):(.+)\z/
 
-    def initialize(scope:, event_type: nil, aggregate: nil, query: nil)
+    def initialize(scope:, type: nil, aggregate: nil, query: nil)
       @scope = scope
-      @event_type = event_type
+      @type = type
       @aggregate = aggregate
       @query = query&.strip
     end
 
     def call
-      filter_by_event_type
+      filter_by_type
       filter_by_aggregate
       filter_by_query
       @scope
@@ -20,10 +20,10 @@ module RailsSimpleEventSourcing
 
     private
 
-    def filter_by_event_type
-      return if @event_type.blank?
+    def filter_by_type
+      return if @type.blank?
 
-      @scope = @scope.where(type: @event_type)
+      @scope = @scope.where(type: @type)
     end
 
     def filter_by_aggregate
