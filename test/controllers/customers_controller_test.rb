@@ -26,7 +26,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerCreated')
+    customer_event = RailsSimpleEventSourcing::Event.find_by(type: 'Customer::Events::CustomerCreated')
     customer = Customer.last
 
     assert_equal 'John', customer_event.payload['first_name']
@@ -64,7 +64,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerEmailTaken')
+    customer_event = RailsSimpleEventSourcing::Event.find_by(type: 'Customer::Events::CustomerEmailTaken')
 
     response_body = response.parsed_body
 
@@ -108,7 +108,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty response_body['created_at']
     assert_not_empty response_body['updated_at']
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerUpdated')
+    customer_event = RailsSimpleEventSourcing::Event.find_by(type: 'Customer::Events::CustomerUpdated')
     customer = Customer.last
 
     # To checked that all events were applied correctly, we change the email into a different value directy in DB
@@ -192,7 +192,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 204, response.status
     assert_empty response_body
 
-    customer_event = RailsSimpleEventSourcing::Event.find_by(event_type: 'Customer::Events::CustomerDeleted')
+    customer_event = RailsSimpleEventSourcing::Event.find_by(type: 'Customer::Events::CustomerDeleted')
     customer = Customer.last
 
     assert_in_delta customer.deleted_at, customer_event.payload['deleted_at'].to_datetime

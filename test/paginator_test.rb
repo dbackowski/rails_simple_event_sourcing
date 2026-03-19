@@ -150,16 +150,16 @@ module RailsSimpleEventSourcing
     end
 
     test 'pagination respects filtered scope' do
-      scope = Event.where(event_type: 'Customer::Events::CustomerUpdated')
+      scope = Event.where(type: 'Customer::Events::CustomerUpdated')
       paginator = Paginator.new(scope: scope, per_page: 2)
 
       paginator.records.each do |record|
-        assert_equal 'Customer::Events::CustomerUpdated', record.event_type
+        assert_equal 'Customer::Events::CustomerUpdated', record.type
       end
     end
 
     test 'empty scope returns no records' do
-      paginator = Paginator.new(scope: Event.where(event_type: 'Nonexistent'), per_page: 2)
+      paginator = Paginator.new(scope: Event.where(type: 'Nonexistent'), per_page: 2)
 
       assert_empty paginator.records
       assert_not paginator.next?

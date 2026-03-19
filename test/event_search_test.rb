@@ -19,11 +19,11 @@ module RailsSimpleEventSourcing
       assert_includes results, @event
     end
 
-    test 'filters by event_type' do
-      results = EventSearch.new(scope: Event.all, event_type: 'Customer::Events::CustomerCreated').call
+    test 'filters by type' do
+      results = EventSearch.new(scope: Event.all, type: 'Customer::Events::CustomerCreated').call
       assert_includes results, @event
 
-      results = EventSearch.new(scope: Event.all, event_type: 'Customer::Events::CustomerUpdated').call
+      results = EventSearch.new(scope: Event.all, type: 'Customer::Events::CustomerUpdated').call
       assert_not_includes results, @event
     end
 
@@ -59,17 +59,17 @@ module RailsSimpleEventSourcing
       assert_not_includes results, @event
     end
 
-    test 'combines event_type and query filters' do
+    test 'combines type and query filters' do
       results = EventSearch.new(
         scope: Event.all,
-        event_type: 'Customer::Events::CustomerCreated',
+        type: 'Customer::Events::CustomerCreated',
         query: 'email:jdoe@example.com'
       ).call
       assert_includes results, @event
 
       results = EventSearch.new(
         scope: Event.all,
-        event_type: 'Customer::Events::CustomerUpdated',
+        type: 'Customer::Events::CustomerUpdated',
         query: 'email:jdoe@example.com'
       ).call
       assert_empty results
