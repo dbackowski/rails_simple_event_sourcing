@@ -2,6 +2,8 @@
 
 A minimalist implementation of the event sourcing pattern for Rails applications. This gem provides a simple, opinionated approach to event sourcing without the complexity of full-featured frameworks.
 
+You don't have to go all-in. The gem can be applied to a single model or a specific part of your domain while the rest of your application continues using standard ActiveRecord. This makes it easy to adopt incrementally — start with a new feature or migrate an existing model to event sourcing when it makes sense, without rewriting your entire system.
+
 If you need a more comprehensive solution, check out:
 - https://www.sequent.io
 - https://railseventstore.org
@@ -22,6 +24,7 @@ If you need a more comprehensive solution, check out:
   - [Metadata Tracking](#metadata-tracking)
   - [Event Querying](#event-querying)
   - [Events Viewer](#events-viewer)
+  - [Adding Event Sourcing to an Existing Model](#adding-event-sourcing-to-an-existing-model)
   - [Event Subscriptions](#event-subscriptions)
 - [Testing](#testing)
 - [Limitations](#limitations)
@@ -689,6 +692,61 @@ class Customer::Events::CustomerDeleted < RailsSimpleEventSourcing::Event
   # No need to implement apply - deleted_at will be automatically set on the aggregate
 end
 ```
+
+### Adding Event Sourcing to an Existing Model
+
+You can introduce event sourcing to a model that already has data. The key step is importing existing records as initial events so that every aggregate has a complete event history going forward.
+
+**Step 1 — Set up the event and command classes as usual:**
+
+```ruby
+class Customer
+  module Events
+    class CustomerCreated < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      event_attributes :first_name, :last_name, :email, :created_at, :updated_at
+    end
+  end
+end
+```
+
+**Step 2 — Include the module in your model:**
+
+```ruby
+class Customer < ApplicationRecord
+  include RailsSimpleEventSourcing::Events
+end
+```
+
+**Step 3 — Create a migration task to import existing records as events:**
+
+```ruby
+# lib/tasks/import_customer_events.rake
+namespace :events do
+  desc "Import existing customers as CustomerCreated events"
+  task import_customers: :environment do
+    Customer.find_each do |customer|
+      next if customer.events.exists?
+
+      Customer::Events::CustomerCreated.create!(
+        aggregate_id: customer.id,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email,
+        created_at: customer.created_at,
+        updated_at: customer.updated_at
+      )
+    end
+  end
+end
+```
+
+Run with:
+```bash
+rake events:import_customers
+```
+
+After the import, every existing record has a `CustomerCreated` event as its baseline. From that point on, all changes go through the command/event flow while the rest of your application remains unchanged.
 
 ### Event Subscriptions
 
