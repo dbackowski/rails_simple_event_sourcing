@@ -102,16 +102,16 @@ end
 
 The event sourcing flow follows this pattern:
 
-```
-HTTP Request → Controller → Command → CommandHandler → Event → Aggregate (Model)
-                   ↓           ↓            ↓             ↓          ↓
-              Pass data   Parameters    Validation +   Immutable   Database
-                          + Validation   Business      Storage
-                            Rules        Logic          ↓
-                                                     EventBus
-                                                        ↓
-                                                    Subscribers
-                                                   (after commit)
+```mermaid
+flowchart TD
+    A[HTTP Request] --> B[Controller]
+    B -->|Pass data| C[Command]
+    C -->|Parameters\n+ Validation Rules| D[CommandHandler]
+    D -->|Validation +\nBusiness Logic| E[Event]
+    E -->|Immutable\nStorage| F[Aggregate\nModel]
+    F --> G[(Database)]
+    E --> H[EventBus]
+    H -->|after commit| I[Subscribers]
 ```
 
 **Flow breakdown:**
