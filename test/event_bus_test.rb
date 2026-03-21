@@ -3,78 +3,94 @@
 require 'test_helper'
 
 class EventBusTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   setup do
     RailsSimpleEventSourcing::EventBus.reset!
+    Customer::Subscribers::Logger.reset!
+    Customer::Subscribers::Notifier.reset!
   end
 
-  test 'dispatches event to a registered subscriber' do
-    received = []
-    subscriber = ->(event) { received << event }
+  test 'dispatches event to a registered subscriber via job' do
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Logger)
 
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, subscriber)
     event = create_customer_created_event
 
-    assert_equal [event], received
+    assert_enqueued_jobs 1
+    perform_enqueued_jobs
+
+    assert_equal [event.id], Customer::Subscribers::Logger.received_event_ids
   end
 
-  test 'dispatches to multiple subscribers for the same event class' do
-    calls = []
-
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(_e) { calls << :first })
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(_e) { calls << :second })
+  test 'enqueues a job per subscriber for the same event class' do
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Logger)
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Notifier)
 
     create_customer_created_event
 
-    assert_equal %i[first second], calls
+    assert_enqueued_jobs 2
   end
 
-  test 'does not dispatch to subscribers of a different event class' do
-    received = []
-
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerUpdated, ->(e) { received << e })
+  test 'does not enqueue jobs for subscribers of a different event class' do
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerUpdated, Customer::Subscribers::Logger)
 
     create_customer_created_event
 
-    assert_empty received
+    assert_enqueued_jobs 0
   end
 
   test 'dispatches to ancestor class subscribers' do
-    received = []
-
-    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, ->(e) { received << e })
+    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, Customer::Subscribers::Logger)
 
     event = create_customer_created_event
 
-    assert_equal [event], received
+    assert_enqueued_jobs 1
+    perform_enqueued_jobs
+
+    assert_equal [event.id], Customer::Subscribers::Logger.received_event_ids
   end
 
-  test 'dispatches to both specific and ancestor class subscribers independently' do
-    calls = []
-
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(_e) { calls << :specific })
-    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, ->(_e) { calls << :catch_all })
+  test 'enqueues jobs for both specific and ancestor class subscribers' do
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Logger)
+    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, Customer::Subscribers::Notifier)
 
     create_customer_created_event
 
-    assert_includes calls, :specific
-    assert_includes calls, :catch_all
-    assert_equal 2, calls.size
+    assert_enqueued_jobs 2
   end
 
-  test 'calls the same subscriber twice if registered for both specific and ancestor class' do
-    calls = []
-    subscriber = ->(e) { calls << e }
-
-    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, subscriber)
-    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, subscriber)
+  test 'enqueues two jobs when same subscriber registered for both specific and ancestor class' do
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Logger)
+    RailsSimpleEventSourcing::EventBus.subscribe(RailsSimpleEventSourcing::Event, Customer::Subscribers::Logger)
 
     create_customer_created_event
 
-    assert_equal 2, calls.size
+    assert_enqueued_jobs 2
   end
 
-  test 'does not dispatch when no subscribers are registered' do
-    assert_nothing_raised { create_customer_created_event }
+  test 'does not enqueue when no subscribers are registered' do
+    create_customer_created_event
+
+    assert_enqueued_jobs 0
+  end
+
+  test 'raises ArgumentError when subscribing with a lambda' do
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, ->(e) { e })
+    end
+  end
+
+  test 'raises ArgumentError when subscribing with a proc' do
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, proc { |e| e })
+    end
+  end
+
+  test 'raises ArgumentError when subscribing with a plain class' do
+    plain_class = Class.new { def self.call(event); end }
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, plain_class)
+    end
   end
 
   # Dispatch uses after_commit (not after_create), guaranteeing the event is

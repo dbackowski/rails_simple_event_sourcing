@@ -114,7 +114,7 @@ flowchart TD
     E -->|Immutable\nStorage| F[Aggregate\nModel]
     F --> G[(Database)]
     E --> H[EventBus]
-    H -->|after commit| I[Subscribers]
+    H -->|after commit| I[Subscribers\nActiveJob]
 ```
 
 **Flow breakdown:**
@@ -123,8 +123,8 @@ flowchart TD
 3. **CommandHandler** - Validates command, executes business logic, creates event
 4. **Event** - Immutable record of what happened
 5. **Aggregate** - Model updated via event
-6. **EventBus** - After the transaction commits, notifies registered subscribers
-7. **Subscribers** - React to events (send emails, sync external systems, etc.)
+6. **EventBus** - After the transaction commits, enqueues subscriber jobs
+7. **Subscribers** - ActiveJob classes that react to events asynchronously (send emails, sync external systems, etc.)
 
 ### Directory Structure
 
@@ -136,13 +136,15 @@ app/
 │  ├─ customer/
 │  │  ├─ command_handlers/
 │  │  │  ├─ create.rb
-│  │  ├─ events/
-│  │  │  ├─ customer_created.rb
 │  │  ├─ commands/
 │  │  │  ├─ create.rb
+│  │  ├─ events/
+│  │  │  ├─ customer_created.rb
+│  │  ├─ subscribers/
+│  │  │  ├─ send_welcome_email.rb
 ```
 
-**Note:** The top directory name (`domain/`) can be different - Rails doesn't enforce this namespace.
+**Note:** The top directory name (`domain/`) can be different - Rails doesn't enforce this namespace. Subscribers are ActiveJob classes (see [Event Subscriptions](#event-subscriptions)), so you can also place them in `app/jobs/` or any other autoloaded directory if that better fits your project structure.
 
 ### Commands
 
@@ -750,7 +752,7 @@ After the import, every existing record has a `CustomerCreated` event as its bas
 
 ### Event Subscriptions
 
-The `EventBus` lets you react to events after they are persisted and committed to the database. Subscribers run **after the transaction commits**, so they never execute against data that could later be rolled back.
+The `EventBus` lets you react to events after they are persisted and committed to the database. Subscribers are **ActiveJob classes** that are enqueued **after the transaction commits**, so they never execute against data that could later be rolled back and they don't block the HTTP response.
 
 **Registering subscribers:**
 
@@ -759,36 +761,44 @@ The `EventBus` lets you react to events after they are persisted and committed t
 Rails.application.config.after_initialize do
   RailsSimpleEventSourcing::EventBus.subscribe(
     Customer::Events::CustomerCreated,
-    Subscribers::SendWelcomeEmail
+    Customer::Subscribers::SendWelcomeEmail
   )
 
   RailsSimpleEventSourcing::EventBus.subscribe(
     Customer::Events::CustomerCreated,
-    Subscribers::CreateStripeCustomer
+    Customer::Subscribers::CreateStripeCustomer
   )
 
   RailsSimpleEventSourcing::EventBus.subscribe(
     Customer::Events::CustomerDeleted,
-    Subscribers::CancelStripeSubscription
+    Customer::Subscribers::CancelStripeSubscription
   )
 end
 ```
 
 **Writing a subscriber:**
 
-Any object that responds to `call(event)` works — a class with `.call`, a lambda, or a proc.
-
-Subscribers are called synchronously within the request cycle, so you should **delegate work to a background job** (e.g., `deliver_later`, `perform_later`) to avoid blocking the response. This also provides isolation between subscribers — if one subscriber raises an exception, it won't prevent the remaining subscribers for the same event from running.
+Subscribers must be ActiveJob classes. Each subscriber is enqueued as its own job, giving you per-subscriber retry logic, queue configuration, and error isolation out of the box.
 
 ```ruby
-module Subscribers
-  class SendWelcomeEmail
-    def self.call(event)
-      WelcomeMailer.with(email: event.email).deliver_later
+class Customer
+  module Subscribers
+    class SendWelcomeEmail < ActiveJob::Base
+      queue_as :default
+
+      def perform(event)
+        WelcomeMailer.with(email: event.email).deliver_later
+      end
     end
   end
 end
 ```
+
+Since each subscriber is a standalone job, you get native ActiveJob benefits:
+- **Per-subscriber queues** — route critical subscribers to high-priority queues
+- **Per-subscriber retries** — configure `retry_on` per subscriber
+- **Error isolation** — a failing subscriber doesn't affect others
+- **Visibility** — each subscriber appears as its own job in your queue dashboard
 
 **Subscribing to all events:**
 
@@ -797,35 +807,36 @@ Subscribe to `RailsSimpleEventSourcing::Event` to receive every event regardless
 ```ruby
 RailsSimpleEventSourcing::EventBus.subscribe(
   RailsSimpleEventSourcing::Event,
-  Subscribers::AuditLogger
+  Customer::Subscribers::AuditLogger
 )
 ```
 
-If you subscribe the same callable to both a specific event class and `RailsSimpleEventSourcing::Event`, it will be called twice — once for each subscription. This is intentional and consistent with standard pub/sub behaviour.
+If you subscribe the same job to both a specific event class and `RailsSimpleEventSourcing::Event`, it will be enqueued twice — once for each subscription. This is intentional and consistent with standard pub/sub behaviour.
 
 **Testing with EventBus:**
 
-Call `RailsSimpleEventSourcing::EventBus.reset!` in your test `setup` to clear all subscriptions between tests:
+Use `ActiveJob::TestHelper` to assert that subscriber jobs are enqueued. Call `RailsSimpleEventSourcing::EventBus.reset!` in your test `setup` to clear all subscriptions between tests:
 
 ```ruby
 class MyTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   setup do
     RailsSimpleEventSourcing::EventBus.reset!
   end
 
-  test "sends welcome email on customer created" do
-    emails = []
+  test "enqueues welcome email job on customer created" do
     RailsSimpleEventSourcing::EventBus.subscribe(
       Customer::Events::CustomerCreated,
-      ->(event) { emails << event.email }
+      Customer::Subscribers::SendWelcomeEmail
     )
 
-    Customer::Events::CustomerCreated.create!(
-      first_name: "John", last_name: "Doe", email: "john@example.com",
-      created_at: Time.zone.now, updated_at: Time.zone.now
-    )
-
-    assert_includes emails, "john@example.com"
+    assert_enqueued_jobs 1 do
+      Customer::Events::CustomerCreated.create!(
+        first_name: "John", last_name: "Doe", email: "john@example.com",
+        created_at: Time.zone.now, updated_at: Time.zone.now
+      )
+    end
   end
 end
 ```

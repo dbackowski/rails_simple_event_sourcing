@@ -6,12 +6,16 @@ module RailsSimpleEventSourcing
 
     class << self
       def subscribe(event_class, subscriber)
+        unless subscriber.is_a?(Class) && subscriber < ActiveJob::Base
+          raise ArgumentError, "Subscriber must be an ActiveJob class, got #{subscriber}"
+        end
+
         @subscriptions[event_class.to_s] << subscriber
       end
 
       def dispatch(event)
-        ancestors_with_subscriptions(event).each do |subscriber|
-          subscriber.call(event)
+        subscribers_for(event).each do |subscriber|
+          subscriber.perform_later(event)
         end
       end
 
@@ -21,7 +25,7 @@ module RailsSimpleEventSourcing
 
       private
 
-      def ancestors_with_subscriptions(event)
+      def subscribers_for(event)
         event.class.ancestors
              .select { |ancestor| @subscriptions.key?(ancestor.to_s) }
              .flat_map { |ancestor| @subscriptions[ancestor.to_s] }
