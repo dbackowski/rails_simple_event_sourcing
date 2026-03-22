@@ -11,6 +11,8 @@ module RailsSimpleEventSourcing
     def show
       @event = Event.find(params[:id])
       @aggregate_state = @event.aggregate_state
+      @payload_links         = AggregateLinksBuilder.new(@event.payload).call
+      @aggregate_state_links = AggregateLinksBuilder.new(@aggregate_state).call
       find_adjacent_versions
     end
 

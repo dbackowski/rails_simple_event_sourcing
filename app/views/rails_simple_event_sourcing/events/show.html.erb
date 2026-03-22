@@ -27,10 +27,32 @@
   </dl>
 </div>
 
-<h2>Payload</h2>
+<% links_on     = params[:links] == "1" %>
+<% toggle_label = links_on ? "Hide links" : "Show links" %>
+<% toggle_url   = links_on ? event_path(@event) : event_path(@event, links: "1") %>
+
+<div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+  <h2 style="margin-bottom:0">Payload</h2>
+  <%= link_to toggle_label, toggle_url, class: "badge" %>
+</div>
 <div class="card">
   <% if @event.payload.present? %>
-    <pre class="json"><%= JSON.pretty_generate(@event.payload) %></pre>
+    <% if links_on %>
+      <dl class="detail-grid">
+        <% @event.payload.each do |key, value| %>
+          <dt class="text-mono"><%= key %></dt>
+          <dd>
+            <% if (rel = @payload_links[key.to_s]) %>
+              <%= link_to value, event_path(rel[:event_id]), title: rel[:aggregate_type] %>
+            <% else %>
+              <span class="text-mono"><%= value.inspect %></span>
+            <% end %>
+          </dd>
+        <% end %>
+      </dl>
+    <% else %>
+      <pre class="json"><%= JSON.pretty_generate(@event.payload) %></pre>
+    <% end %>
   <% else %>
     <p class="text-muted">No payload</p>
   <% end %>
@@ -45,10 +67,28 @@
   <% end %>
 </div>
 
-<h2>Aggregate State (at version <%= @event.version %>)</h2>
+<div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+  <h2 style="margin-bottom:0">Aggregate State (at version <%= @event.version %>)</h2>
+  <%= link_to toggle_label, toggle_url, class: "badge" %>
+</div>
 <div class="card">
   <% if @aggregate_state.present? %>
-    <pre class="json"><%= JSON.pretty_generate(@aggregate_state) %></pre>
+    <% if links_on %>
+      <dl class="detail-grid">
+        <% @aggregate_state.each do |key, value| %>
+          <dt class="text-mono"><%= key %></dt>
+          <dd>
+            <% if (rel = @aggregate_state_links[key.to_s]) %>
+              <%= link_to value, event_path(rel[:event_id]), title: rel[:aggregate_type] %>
+            <% else %>
+              <span class="text-mono"><%= value.inspect %></span>
+            <% end %>
+          </dd>
+        <% end %>
+      </dl>
+    <% else %>
+      <pre class="json"><%= JSON.pretty_generate(@aggregate_state) %></pre>
+    <% end %>
   <% else %>
     <p class="text-muted">No aggregate</p>
   <% end %>
