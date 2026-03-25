@@ -9,6 +9,7 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
       t.bigint :version
       t.jsonb :payload
       t.jsonb :metadata
+      t.integer :schema_version
 
       t.timestamps
 

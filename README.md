@@ -26,6 +26,7 @@ If you need a more comprehensive solution, check out:
   - [Events Viewer](#events-viewer)
   - [Adding Event Sourcing to an Existing Model](#adding-event-sourcing-to-an-existing-model)
   - [Event Subscriptions](#event-subscriptions)
+  - [Event Schema Versioning](#event-schema-versioning)
 - [Testing](#testing)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -45,6 +46,7 @@ If you need a more comprehensive solution, check out:
 - **PostgreSQL JSONB Storage** - Efficient JSON storage for event payloads and metadata
 - **Built-in Events Viewer** - Web UI for browsing, searching, and inspecting events
 - **Event Subscriptions** - React to events after they are committed (send emails, send webhooks, etc.)
+- **Event Schema Versioning** - Built-in upcasting to evolve event schemas without modifying stored data
 - **Minimal Configuration** - Convention over configuration approach
 
 ## Requirements
@@ -348,6 +350,7 @@ end
 **Understanding the Event Structure:**
 - `aggregate_class Customer` - Specifies which model this event modifies
 - `event_attributes` - Defines what data gets stored in the event's JSON payload and what will be automatically applied
+- `current_version` - Optional; declares the current schema version for this event (defaults to 1). See [Event Schema Versioning](#event-schema-versioning)
 - `apply(aggregate)` - Optional method; only implement if you need custom logic beyond automatic attribute assignment
 - `aggregate_id` - Auto-generated for creates, must be provided for updates/deletes
 
@@ -783,7 +786,7 @@ Subscribers must be ActiveJob classes. Each subscriber is enqueued as its own jo
 ```ruby
 class Customer
   module Subscribers
-    class SendWelcomeEmail < ActiveJob::Base
+    class SendWelcomeEmail < ApplicationJob
       queue_as :default
 
       def perform(event)
@@ -840,6 +843,78 @@ class MyTest < ActiveSupport::TestCase
   end
 end
 ```
+
+### Event Schema Versioning
+
+Over time, event schemas may need to change — fields get renamed, split, or added. Since events are immutable and stored forever, the gem provides built-in **upcasting** support to transparently transform old event payloads to the current schema when read.
+
+**How it works:**
+
+Each event class can declare a `current_version` and register `upcaster` blocks that transform payloads from one version to the next. When an event is loaded from the database, the `payload` method automatically runs the necessary upcasters to bring old data up to the current schema. The stored data is never modified — upcasting happens on read.
+
+**Example — splitting a `name` field into `first_name` and `last_name`:**
+
+```ruby
+class Customer
+  module Events
+    class CustomerCreated < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      current_version 2
+      event_attributes :first_name, :last_name, :email, :created_at, :updated_at
+
+      # v1 had a single "name" field, v2 splits it into first_name and last_name
+      upcaster(1) do |payload|
+        if payload.key?('name')
+          parts = payload.delete('name').to_s.split(' ', 2)
+          payload['first_name'] = parts[0]
+          payload['last_name'] = parts[1]
+        end
+        payload
+      end
+    end
+  end
+end
+```
+
+**Chaining multiple upcasters:**
+
+Upcasters are applied sequentially. A v1 event will run through `upcaster(1)`, then `upcaster(2)`, and so on until it reaches the `current_version`:
+
+```ruby
+class Customer
+  module Events
+    class CustomerCreated < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      current_version 3
+      event_attributes :first_name, :last_name, :email, :phone, :created_at, :updated_at
+
+      # v1 -> v2: split "name" into first_name/last_name
+      upcaster(1) do |payload|
+        if payload.key?('name')
+          parts = payload.delete('name').to_s.split(' ', 2)
+          payload['first_name'] = parts[0]
+          payload['last_name'] = parts[1]
+        end
+        payload
+      end
+
+      # v2 -> v3: add phone with default
+      upcaster(2) do |payload|
+        payload['phone'] ||= 'unknown'
+        payload
+      end
+    end
+  end
+end
+```
+
+**Key points:**
+
+- `current_version` is optional — if not called, the schema version defaults to 1
+- New events are stored with the current version, so they skip upcasting entirely
+- If an upcaster is missing for a version in the chain, a `RuntimeError` is raised
+- Upcasting is transparent to `apply` — custom or default `apply` methods receive the already-upcasted payload
+- Events without `aggregate_class` do not use schema versioning (the `schema_version` column is left `nil`)
 
 ## Testing
 
@@ -968,7 +1043,6 @@ end
 Be aware of these limitations when using this gem:
 
 - **PostgreSQL Only** - Requires PostgreSQL 9.4+ for JSONB support
-- **No Event Versioning** - No built-in support for evolving event schemas over time
 - **No Snapshots** - All aggregate reconstruction done by replaying all events (can be slow for aggregates with many events)
 - **No Projections** - No built-in read model or projection support
 - **Manual aggregate_id** - Must manually track and pass `aggregate_id` for updates/deletes

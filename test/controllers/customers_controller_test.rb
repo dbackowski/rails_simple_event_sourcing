@@ -247,6 +247,42 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test 'aggregate is correctly rebuilt from upcasted v1 events' do
+    post customers_url,
+         params: { first_name: 'John', last_name: 'Doe', email: 'jdoe@example.com' },
+         headers: { 'HTTP_REFERER' => 'example.com' }
+
+    event = RailsSimpleEventSourcing::Event.find_by(type: 'Customer::Events::CustomerCreated')
+    customer = Customer.last
+
+    # Simulate a legacy v1 event with "name" instead of first_name/last_name
+    v1_payload = {
+      name: 'John Doe',
+      email: 'jdoe@example.com',
+      created_at: customer.created_at.iso8601,
+      updated_at: customer.updated_at.iso8601
+    }.to_json
+
+    event.class.where(id: event.id).update_all(schema_version: 1) # rubocop:disable Rails/SkipsModelValidations
+    RailsSimpleEventSourcing::Event
+      .where(id: event.id)
+      .update_all(Arel.sql("payload = '#{v1_payload}'::jsonb")) # rubocop:disable Rails/SkipsModelValidations
+
+    # Set different values directly in DB to ensure replay overwrites them
+    Customer.where(id: customer.id).update_all(first_name: 'Wrong', last_name: 'Name') # rubocop:disable Rails/SkipsModelValidations
+
+    # Delete the customer — this triggers a full replay including the v1 event
+    # The delete event only sets deleted_at, so first_name/last_name come entirely from the upcasted v1 event
+    delete customer_url(customer.id), headers: { 'HTTP_REFERER' => 'example.com' }
+
+    assert_equal 204, response.status
+
+    customer.reload
+    assert_equal 'John', customer.first_name
+    assert_equal 'Doe', customer.last_name
+    assert_not_nil customer.deleted_at
+  end
+
   test 'event instance is read-only after creation' do
     event = Customer::Events::CustomerCreated.create!(
       first_name: 'John',

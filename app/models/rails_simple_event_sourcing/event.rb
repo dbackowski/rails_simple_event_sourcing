@@ -5,6 +5,7 @@ module RailsSimpleEventSourcing
     include ReadOnly
     include EventAttributes
     include AggregateConfiguration
+    include SchemaVersioning
 
     belongs_to :eventable, polymorphic: true, optional: true
     alias aggregate eventable

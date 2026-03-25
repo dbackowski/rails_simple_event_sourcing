@@ -29,9 +29,10 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
     t.bigint "eventable_id"
     t.string "type", null: false
     t.string "aggregate_id"
-    t.integer "version"
+    t.bigint "version"
     t.jsonb "payload"
     t.jsonb "metadata"
+    t.integer "schema_version"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["eventable_type", "aggregate_id", "version"], name: "index_events_on_eventable_type_and_aggregate_id_and_version", unique: true
