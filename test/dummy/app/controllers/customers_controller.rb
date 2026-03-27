@@ -6,7 +6,7 @@ class CustomersController < ApplicationController
       email: params[:email]
     )
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { |data| render json: data }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
@@ -19,7 +19,7 @@ class CustomersController < ApplicationController
       email: params[:email]
     )
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { |data| render json: data }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
@@ -27,7 +27,7 @@ class CustomersController < ApplicationController
   def destroy
     cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { head :no_content }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end

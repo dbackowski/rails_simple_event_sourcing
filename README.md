@@ -358,6 +358,55 @@ end
 - Optional - you can have events without an aggregate (e.g., `UserLoginFailed` for logging only)
 - The corresponding model should include `RailsSimpleEventSourcing::Events` for read-only protection
 
+**Example - Event without an aggregate:**
+
+When you want to record something that happened without modifying any model (audit logs, failed attempts, notifications, etc.), simply omit `aggregate_class`:
+
+```ruby
+class Customer
+  module Events
+    class CustomerEmailTaken < RailsSimpleEventSourcing::Event
+      event_attributes :first_name, :last_name, :email
+    end
+  end
+end
+```
+
+These events are stored in the event log like any other event, but they don't create or update an aggregate. You can create them directly:
+
+```ruby
+Customer::Events::CustomerEmailTaken.create!(
+  first_name: 'John',
+  last_name: 'Doe',
+  email: 'john@example.com'
+)
+```
+
+Or from within a command handler as part of your business logic:
+
+```ruby
+class Customer
+  module CommandHandlers
+    class Create < RailsSimpleEventSourcing::CommandHandlers::Base
+      def call
+        if Customer.exists?(email: command.email)
+          Customer::Events::CustomerEmailTaken.create!(
+            first_name: command.first_name,
+            last_name: command.last_name,
+            email: command.email
+          )
+          return failure(errors: { email: ['already taken'] })
+        end
+
+        # ... create the customer event
+      end
+    end
+  end
+end
+```
+
+This is useful for recording domain-significant occurrences that don't map to a state change on a model.
+
 ### Registering Command Handlers
 
 The recommended approach is to register command handlers explicitly using the registry. This makes the command-to-handler mapping explicit and avoids relying on naming conventions.
@@ -403,7 +452,7 @@ class CustomersController < ApplicationController
       email: params[:email]
     )
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { |data| render json: data }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
@@ -424,7 +473,7 @@ class CustomersController < ApplicationController
       email: params[:email]
     )
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { |data| render json: data }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
@@ -438,7 +487,7 @@ class CustomersController < ApplicationController
   def destroy
     cmd = Customer::Commands::Delete.new(aggregate_id: params[:id])
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
       .on_success { head :no_content }
       .on_failure { |errors| render json: { errors: }, status: :unprocessable_entity }
   end
@@ -988,7 +1037,7 @@ class Customer::CommandHandlers::CreateTest < ActiveSupport::TestCase
       email: "john@example.com"
     )
 
-    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    result = RailsSimpleEventSourcing.dispatch(cmd)
 
     assert result.success?
     assert_instance_of Customer, result.data
@@ -1011,7 +1060,7 @@ class Customer::CommandHandlers::CreateTest < ActiveSupport::TestCase
       email: "john@example.com"
     )
 
-    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    result = RailsSimpleEventSourcing.dispatch(cmd)
 
     assert_not result.success?
     assert_includes result.errors, "Email has already been taken"
@@ -1123,7 +1172,7 @@ customer.update(first_name: "Jane")
 
 # Do this:
 cmd = Customer::Commands::Update.new(aggregate_id: customer.id, first_name: "Jane", ...)
-RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+RailsSimpleEventSourcing.dispatch(cmd)
 ```
 
 ### Missing aggregate_id for updates

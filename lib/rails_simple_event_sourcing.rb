@@ -14,4 +14,8 @@ module RailsSimpleEventSourcing
   def self.config
     @config ||= Configuration.new
   end
+
+  def self.dispatch(command)
+    CommandHandler.new(command).call
+  end
 end

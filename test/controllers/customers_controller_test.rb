@@ -55,7 +55,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       email: 'jdoe@example.com'
     )
 
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
@@ -86,7 +86,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       last_name: 'Doe',
       email: 'jdoe@example.com'
     )
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count }, from: 1, to: 2 do
@@ -155,7 +155,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       last_name: 'Doe',
       email: 'jdoe@example.com'
     )
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
 
     assert_no_changes -> { Customer.count } do
       assert_no_changes -> { RailsSimpleEventSourcing::Event.count } do
@@ -179,7 +179,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       last_name: 'Doe',
       email: 'jdoe@example.com'
     )
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
 
     assert_no_changes -> { Customer.count } do
       assert_changes -> { RailsSimpleEventSourcing::Event.count } do
@@ -211,7 +211,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       last_name: 'Doe',
       email: 'jdoe@example.com'
     )
-    RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    RailsSimpleEventSourcing.dispatch(cmd)
 
     customer = Customer.last
 
@@ -239,7 +239,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       last_name: 'Doe',
       email: 'jdoe@example.com'
     )
-    result = RailsSimpleEventSourcing::CommandHandler.new(cmd).call
+    result = RailsSimpleEventSourcing.dispatch(cmd)
     customer = result.data
 
     assert_raise ActiveRecord::ReadOnlyRecord do
