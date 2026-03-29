@@ -12,9 +12,7 @@ module RailsSimpleEventSourcing
       end
     end
 
-    def aggregate_class
-      self.class.aggregate_class
-    end
+    delegate :aggregate_class, to: :class
 
     def aggregate_defined?
       aggregate_class.present?
