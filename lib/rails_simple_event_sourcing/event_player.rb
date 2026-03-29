@@ -25,7 +25,7 @@ module RailsSimpleEventSourcing
     end
 
     def apply_events(events)
-      events.each do |event|
+      events.find_each(cursor: [:version]) do |event|
         event.apply(@aggregate)
       end
     end
