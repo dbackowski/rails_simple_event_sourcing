@@ -152,7 +152,7 @@ class SchemaVersioningTest < ActiveSupport::TestCase # rubocop:disable Metrics/C
     assert_equal 'John', reloaded.payload['first_name']
   end
 
-  test 'snapshot built from upcasted v1 event feeds correctly into subsequent v2 event replay' do
+  test 'snapshot built from upcasted v1 event feeds correctly into subsequent v2 event replay' do # rubocop:disable Metrics/BlockLength
     created_event = create_event(first_name: 'john', last_name: 'doe')
     aggregate_id = created_event.aggregate_id
 

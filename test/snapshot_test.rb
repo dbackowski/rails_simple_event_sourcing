@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-class SnapshotTest < ActiveSupport::TestCase
+class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLength
   test 'create_snapshot! saves current aggregate state at latest version' do
     customer = create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
     customer.create_snapshot!
