@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_28_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -35,11 +35,21 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_31_133250) do
     t.integer "schema_version"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["type"], name: "index_rails_simple_event_sourcing_events_on_type"
     t.index ["eventable_type", "aggregate_id", "version"], name: "index_events_on_eventable_type_and_aggregate_id_and_version", unique: true
     t.index ["eventable_type", "eventable_id"], name: "index_rails_simple_event_sourcing_events_on_eventable"
     t.index ["metadata"], name: "index_rails_simple_event_sourcing_events_on_metadata", using: :gin
     t.index ["payload"], name: "index_rails_simple_event_sourcing_events_on_payload", using: :gin
-    t.index ["type"], name: "index_rails_simple_event_sourcing_events_on_type"
+  end
+
+  create_table "rails_simple_event_sourcing_snapshots", force: :cascade do |t|
+    t.string "aggregate_type", null: false
+    t.string "aggregate_id", null: false
+    t.jsonb "state", default: {}, null: false
+    t.integer "version", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["aggregate_type", "aggregate_id"], name: "index_snapshots_on_aggregate_type_and_aggregate_id", unique: true
   end
 
 end

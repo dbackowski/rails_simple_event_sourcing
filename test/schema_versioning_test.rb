@@ -152,6 +152,49 @@ class SchemaVersioningTest < ActiveSupport::TestCase # rubocop:disable Metrics/C
     assert_equal 'John', reloaded.payload['first_name']
   end
 
+  test 'snapshot built from upcasted v1 event feeds correctly into subsequent v2 event replay' do
+    created_event = create_event(first_name: 'john', last_name: 'doe')
+    aggregate_id = created_event.aggregate_id
+
+    simulate_old_event(
+      created_event,
+      schema_version: 1,
+      payload: {
+        'name' => 'John Doe',
+        'email' => 'john@example.com',
+        'created_at' => '2024-01-01',
+        'updated_at' => '2024-01-01'
+      }
+    )
+
+    # simulate_old_event clears the snapshot; EventPlayer must now upcast the v1 event
+    # and build a new snapshot from the upcasted result when the next event is created
+
+    # Creating a v2 event triggers: replay(v1 → upcasted → John/Doe) + apply(update → Jane/Smith)
+    Customer::Events::CustomerUpdated.create!(
+      aggregate_id: aggregate_id,
+      first_name: 'Jane',
+      last_name: 'Smith',
+      email: 'jane@example.com',
+      updated_at: Time.zone.now
+    )
+
+    # Manually snapshot the current aggregate state
+    Customer.find(aggregate_id).create_snapshot!
+
+    # Delete all events — if the snapshot is correct, replay needs no events at all
+    RailsSimpleEventSourcing::Event.where(aggregate_id: aggregate_id).delete_all
+
+    fresh = Customer.find(aggregate_id)
+    fresh.first_name = nil
+    fresh.last_name = nil
+
+    RailsSimpleEventSourcing::EventPlayer.new(fresh).replay_stream
+
+    assert_equal 'Jane', fresh.first_name
+    assert_equal 'Smith', fresh.last_name
+  end
+
   test 'upcasted payload is used during aggregate replay' do
     event = create_event(first_name: 'john', last_name: 'Doe')
 
@@ -181,6 +224,9 @@ class SchemaVersioningTest < ActiveSupport::TestCase # rubocop:disable Metrics/C
     attrs = { schema_version: schema_version }
     attrs[:payload] = payload if payload
     RailsSimpleEventSourcing::Event.where(id: event.id).update_all(attrs) # rubocop:disable Rails/SkipsModelValidations
+    # The snapshot was built from the original payload, so it is now stale.
+    # Clear it so replay falls back to re-reading the patched event with upcasting.
+    RailsSimpleEventSourcing::Snapshot.where(aggregate_id: event.aggregate_id.to_s).delete_all if event.aggregate_id
   end
 
   def create_event(attrs = {})

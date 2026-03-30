@@ -27,6 +27,7 @@ If you need a more comprehensive solution, check out:
   - [Adding Event Sourcing to an Existing Model](#adding-event-sourcing-to-an-existing-model)
   - [Event Subscriptions](#event-subscriptions)
   - [Event Schema Versioning](#event-schema-versioning)
+  - [Snapshots](#snapshots)
 - [Testing](#testing)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -47,12 +48,13 @@ If you need a more comprehensive solution, check out:
 - **Built-in Events Viewer** - Web UI for browsing, searching, and inspecting events
 - **Event Subscriptions** - React to events after they are committed (send emails, send webhooks, etc.)
 - **Event Schema Versioning** - Built-in upcasting to evolve event schemas without modifying stored data
+- **Snapshot Support** - Optional snapshots to speed up aggregate reconstruction for long event streams
 - **Minimal Configuration** - Convention over configuration approach
 
 ## Requirements
 
 - **Ruby**: 3.2 or higher
-- **Rails**: 7.1.2 or higher
+- **Rails**: 7.2.0 or higher
 - **Database**: PostgreSQL 9.4+ (requires JSONB support)
 
 ## Installation
@@ -98,6 +100,12 @@ RailsSimpleEventSourcing.configure do |config|
 
   # Number of events displayed per page in the Events Viewer (defaults to 25)
   config.events_per_page = 50
+
+  # Automatically create a snapshot every N events per aggregate (defaults to nil = disabled)
+  # With snapshot_interval = 50, a snapshot is written after every 50th event.
+  # EventPlayer will load the nearest snapshot and replay only the delta,
+  # instead of replaying the full event history from the beginning.
+  config.snapshot_interval = 50
 end
 ```
 
@@ -463,6 +471,58 @@ end
 
 **Update Example:**
 
+Command — same structure as create, but inherits `aggregate_id` from the base class:
+
+```ruby
+class Customer
+  module Commands
+    class Update < RailsSimpleEventSourcing::Commands::Base
+      attr_accessor :first_name, :last_name, :email
+
+      validates :first_name, presence: true
+      validates :last_name, presence: true
+    end
+  end
+end
+```
+
+Event:
+
+```ruby
+class Customer
+  module Events
+    class CustomerUpdated < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      event_attributes :first_name, :last_name, :email, :updated_at
+    end
+  end
+end
+```
+
+Handler — pass `aggregate_id` to the event so it knows which aggregate to replay and update:
+
+```ruby
+class Customer
+  module CommandHandlers
+    class Update < RailsSimpleEventSourcing::CommandHandlers::Base
+      def call
+        event = Customer::Events::CustomerUpdated.create!(
+          aggregate_id: command.aggregate_id,
+          first_name: command.first_name,
+          last_name: command.last_name,
+          email: command.email,
+          updated_at: Time.zone.now
+        )
+
+        success(data: event.aggregate)
+      end
+    end
+  end
+end
+```
+
+Controller:
+
 ```ruby
 class CustomersController < ApplicationController
   def update
@@ -482,6 +542,51 @@ end
 
 **Delete Example:**
 
+Command — only `aggregate_id` is needed (inherited from base class, no extra attributes):
+
+```ruby
+class Customer
+  module Commands
+    class Delete < RailsSimpleEventSourcing::Commands::Base
+    end
+  end
+end
+```
+
+Event — uses a soft delete pattern; sets `deleted_at` instead of removing the record:
+
+```ruby
+class Customer
+  module Events
+    class CustomerDeleted < RailsSimpleEventSourcing::Event
+      aggregate_class Customer
+      event_attributes :deleted_at
+    end
+  end
+end
+```
+
+Handler:
+
+```ruby
+class Customer
+  module CommandHandlers
+    class Delete < RailsSimpleEventSourcing::CommandHandlers::Base
+      def call
+        Customer::Events::CustomerDeleted.create!(
+          aggregate_id: command.aggregate_id,
+          deleted_at: Time.zone.now
+        )
+
+        success
+      end
+    end
+  end
+end
+```
+
+Controller:
+
 ```ruby
 class CustomersController < ApplicationController
   def destroy
@@ -494,7 +599,7 @@ class CustomersController < ApplicationController
 end
 ```
 
-**Important:** For update and delete operations, you must pass `aggregate_id` to identify which record to modify. See the full examples in `test/dummy/app/domain/customer/`.
+**Important:** For update and delete operations, you must pass `aggregate_id` to identify which record to modify. The event handler receives this via `command.aggregate_id` and uses it to find and replay the correct aggregate before applying the new event.
 
 ### Testing the API
 
@@ -633,7 +738,29 @@ end
 ```
 
 **Metadata Outside HTTP Requests:**
-When events are created outside HTTP requests (background jobs, console, tests), metadata will be empty unless you manually set it using `CurrentRequest.metadata = {...}`.
+
+When events are created outside HTTP requests (background jobs, rake tasks, console), metadata will be empty unless you set it manually. `CurrentRequest` is backed by `ActiveSupport::CurrentAttributes`, which resets automatically between requests and jobs, so you must set it at the start of each execution:
+
+```ruby
+class CustomerImportJob < ApplicationJob
+  def perform(row)
+    RailsSimpleEventSourcing::CurrentRequest.metadata = {
+      job: self.class.name,
+      job_id: job_id
+    }
+
+    RailsSimpleEventSourcing.dispatch(
+      Customer::Commands::Create.new(
+        first_name: row[:first_name],
+        last_name: row[:last_name],
+        email: row[:email]
+      )
+    )
+  end
+end
+```
+
+Any events dispatched during that job execution will carry the metadata you set. You do not need to clear it afterwards — `CurrentAttributes` resets automatically when the job finishes.
 
 ### Events Viewer
 
@@ -738,12 +865,22 @@ class Customer < ApplicationRecord
   scope :deleted, -> { where.not(deleted_at: nil) }
 end
 
-# Event
+# Event - deleted_at is applied to the aggregate automatically via event_attributes
 class Customer::Events::CustomerDeleted < RailsSimpleEventSourcing::Event
   aggregate_class Customer
   event_attributes :deleted_at
+end
 
-  # No need to implement apply - deleted_at will be automatically set on the aggregate
+# Handler
+class Customer::CommandHandlers::Delete < RailsSimpleEventSourcing::CommandHandlers::Base
+  def call
+    Customer::Events::CustomerDeleted.create!(
+      aggregate_id: command.aggregate_id,
+      deleted_at: Time.zone.now
+    )
+
+    success
+  end
 end
 ```
 
@@ -965,6 +1102,64 @@ end
 - Upcasting is transparent to `apply` — custom or default `apply` methods receive the already-upcasted payload
 - Events without `aggregate_class` do not use schema versioning (the `schema_version` column is left `nil`)
 
+### Snapshots
+
+By default, every aggregate reconstruction replays its full event history from the beginning. For aggregates with many events this can become slow. Snapshots store the aggregate's serialized state at a given version so that `EventPlayer` only needs to replay events written after the snapshot.
+
+**Automatic snapshots:**
+
+Set `snapshot_interval` in your initializer to have a snapshot created automatically every N events:
+
+```ruby
+# config/initializers/rails_simple_event_sourcing.rb
+RailsSimpleEventSourcing.configure do |config|
+  config.snapshot_interval = 50
+end
+```
+
+With `snapshot_interval = 50`, a snapshot is written after event version 50, 100, 150, and so on. On the next reconstruction, `EventPlayer` loads the snapshot at version 100 and replays only events 101 onwards — at most 49 events instead of all 100+.
+
+**Manual snapshots:**
+
+Call `create_snapshot!` on any aggregate to write a snapshot immediately at the current version:
+
+```ruby
+customer = Customer.find(params[:id])
+customer.create_snapshot!
+```
+
+This is useful after bulk imports or data migrations, where you want to pre-warm snapshots for all existing aggregates:
+
+```ruby
+# lib/tasks/import_customer_events.rake
+namespace :events do
+  desc "Import existing customers as CustomerCreated events and pre-warm snapshots"
+  task import_customers: :environment do
+    Customer.find_each do |customer|
+      next if customer.events.exists?
+
+      Customer::Events::CustomerCreated.create!(
+        aggregate_id: customer.id,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email,
+        created_at: customer.created_at,
+        updated_at: customer.updated_at
+      )
+
+      customer.reload.create_snapshot!
+    end
+  end
+end
+```
+
+**How it works:**
+
+- Snapshots are stored in the `rails_simple_event_sourcing_snapshots` table
+- One snapshot per aggregate is kept — each new snapshot overwrites the previous one
+- `aggregate_state` (used by the Events Viewer) also benefits: when reconstructing historical state at version N, the nearest snapshot at or before version N is used
+- If no snapshot exists, `EventPlayer` falls back to a full replay — behaviour is identical, just slower
+
 ## Testing
 
 ### Setting Up Tests with Command Handler Registry
@@ -1092,7 +1287,6 @@ end
 Be aware of these limitations when using this gem:
 
 - **PostgreSQL Only** - Requires PostgreSQL 9.4+ for JSONB support
-- **No Snapshots** - All aggregate reconstruction done by replaying all events (can be slow for aggregates with many events)
 - **No Projections** - No built-in read model or projection support
 - **Manual aggregate_id** - Must manually track and pass `aggregate_id` for updates/deletes
 - **No Saga Support** - No built-in support for long-running processes or sagas

@@ -22,6 +22,7 @@ module RailsSimpleEventSourcing
     before_save :persist_aggregate, if: :aggregate_defined?
     after_create :disable_write_access!
     after_commit :dispatch_to_event_bus, on: :create
+    after_commit :maybe_create_snapshot, on: :create
 
     def apply(aggregate)
       payload.each do |key, value|
@@ -85,6 +86,13 @@ module RailsSimpleEventSourcing
 
     def dispatch_to_event_bus
       EventBus.dispatch(self)
+    end
+
+    def maybe_create_snapshot
+      interval = RailsSimpleEventSourcing.config.snapshot_interval
+      return unless interval && aggregate_defined? && eventable.present? && (version % interval).zero?
+
+      Snapshot.create_from_event!(self)
     end
   end
 end
