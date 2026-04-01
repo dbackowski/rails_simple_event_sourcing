@@ -28,8 +28,8 @@ module RailsSimpleEventSourcing
         from_version = 1
       end
 
-      scope = @aggregate.events.where(version: from_version..)
-      scope = scope.where(version: ..up_to_version).order(:version) if up_to_version
+      scope = @aggregate.events.where(version: from_version..).order(:version)
+      scope = scope.where(version: ..up_to_version) if up_to_version
       scope
     end
 

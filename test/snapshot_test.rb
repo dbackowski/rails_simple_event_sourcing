@@ -165,7 +165,7 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
     assert_equal 2, snapshot.version
     assert_equal 'Jane', snapshot.state['first_name']
   ensure
-    RailsSimpleEventSourcing.config.snapshot_interval = nil
+    RailsSimpleEventSourcing.config.snapshot_interval = 1
   end
 
   test 'auto-snapshot not created when version is not a multiple of snapshot_interval' do
@@ -178,7 +178,7 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
       aggregate_id: customer.id.to_s
     )
   ensure
-    RailsSimpleEventSourcing.config.snapshot_interval = nil
+    RailsSimpleEventSourcing.config.snapshot_interval = 1
   end
 
   test 'no auto-snapshot when snapshot_interval is nil' do
