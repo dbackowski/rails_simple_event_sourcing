@@ -1002,6 +1002,21 @@ RailsSimpleEventSourcing::EventBus.subscribe(
 
 If you subscribe the same job to both a specific event class and `RailsSimpleEventSourcing::Event`, it will be enqueued twice — once for each subscription. This is intentional and consistent with standard pub/sub behaviour.
 
+**Error handling:**
+
+Subscribers are dispatched as ActiveJob jobs. Use standard ActiveJob error handling to configure retries and failure behavior:
+
+```ruby
+class SendWelcomeEmailJob < ApplicationJob
+  retry_on Net::OpenError, wait: :polynomially_longer, attempts: 5
+  discard_on ActiveJob::DeserializationError
+
+  def perform(event)
+    # ...
+  end
+end
+```
+
 **Testing with EventBus:**
 
 Use `ActiveJob::TestHelper` to assert that subscriber jobs are enqueued. Call `RailsSimpleEventSourcing::EventBus.reset!` in your test `setup` to clear all subscriptions between tests:
@@ -1118,6 +1133,10 @@ end
 ```
 
 With `snapshot_interval = 50`, a snapshot is written after event version 50, 100, 150, and so on. On the next reconstruction, `EventPlayer` loads the snapshot at version 100 and replays only events 101 onwards — at most 49 events instead of all 100+.
+
+**Choosing a snapshot interval:**
+
+The right interval depends on your event replay cost. A lower interval (e.g., 20) means faster reconstruction but more snapshot writes. A higher interval (e.g., 200) saves writes but replays more events. For most applications, 50–100 is a reasonable starting point.
 
 **Manual snapshots:**
 
@@ -1291,6 +1310,7 @@ Be aware of these limitations when using this gem:
 - **Manual aggregate_id** - Must manually track and pass `aggregate_id` for updates/deletes
 - **No Saga Support** - No built-in support for long-running processes or sagas
 - **Single Database** - Events and aggregates must be in the same database
+- **Pessimistic Locking** - Concurrent updates to the same aggregate are serialized using `SELECT ... FOR UPDATE`. This guarantees correctness but may increase latency under high contention on a single aggregate. A unique database index on `(eventable_type, aggregate_id, version)` provides an additional safety net
 
 ## Troubleshooting
 
