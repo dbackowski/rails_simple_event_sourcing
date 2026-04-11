@@ -181,6 +181,66 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
     RailsSimpleEventSourcing.config.snapshot_interval = 1
   end
 
+  test 'create_snapshot! stores schema fingerprint of aggregate class' do
+    customer = create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
+    customer.create_snapshot!
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+
+    assert_equal RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer), snapshot.schema_fingerprint
+  end
+
+  test 'EventPlayer ignores snapshot with mismatched schema fingerprint' do
+    customer = create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
+    customer.create_snapshot!
+
+    # Simulate an aggregate schema change by corrupting the fingerprint
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by!(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+    snapshot.update!(
+      schema_fingerprint: 'stale-fingerprint',
+      state: { 'first_name' => 'STALE', 'last_name' => 'STALE' }
+    )
+
+    fresh = Customer.find(customer.id)
+    fresh.first_name = nil
+    fresh.last_name = nil
+
+    RailsSimpleEventSourcing::EventPlayer.new(fresh).replay_stream
+
+    # Should fall back to full replay from events, not the stale snapshot
+    assert_equal 'John', fresh.first_name
+    assert_equal 'Doe', fresh.last_name
+  end
+
+  test 'stale snapshot is overwritten with fresh fingerprint on next snapshot' do
+    customer = create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
+    customer.create_snapshot!
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by!(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+    snapshot.update!(schema_fingerprint: 'stale-fingerprint')
+
+    customer.reload
+    customer.create_snapshot!
+
+    snapshots = RailsSimpleEventSourcing::Snapshot.where(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+
+    assert_equal 1, snapshots.count
+    assert_not_equal 'stale-fingerprint', snapshots.first.schema_fingerprint
+    assert_equal RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer), snapshots.first.schema_fingerprint
+  end
+
   test 'no auto-snapshot when snapshot_interval is nil' do
     RailsSimpleEventSourcing.config.snapshot_interval = nil
 
@@ -189,6 +249,8 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
     create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
 
     assert_equal 0, RailsSimpleEventSourcing::Snapshot.count
+  ensure
+    RailsSimpleEventSourcing.config.snapshot_interval = 1
   end
 
   private

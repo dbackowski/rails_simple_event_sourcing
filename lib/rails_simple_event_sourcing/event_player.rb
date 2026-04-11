@@ -41,6 +41,7 @@ module RailsSimpleEventSourcing
         aggregate_id: @aggregate.id.to_s
       )
       return nil if snapshot && up_to_version && snapshot.version > up_to_version
+      return nil if snapshot && snapshot.schema_fingerprint != Snapshot.fingerprint_for(@aggregate.class)
 
       snapshot
     end

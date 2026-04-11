@@ -1179,6 +1179,14 @@ end
 - `aggregate_state` (used by the Events Viewer) also benefits: when reconstructing historical state at version N, the nearest snapshot at or before version N is used
 - If no snapshot exists, `EventPlayer` falls back to a full replay — behaviour is identical, just slower
 
+**Schema fingerprinting:**
+
+Each snapshot stores a `schema_fingerprint` — a hash of the aggregate's column names at the time the snapshot was written. When `EventPlayer` loads a snapshot, it compares the stored fingerprint against the aggregate's current fingerprint. If they differ (because a column was added, removed, or renamed), the snapshot is **ignored** and a full event replay is performed instead.
+
+This protects you from a subtle class of bug: snapshots store the aggregate's raw attributes at a point in time, but upcasters only transform event payloads — there's no equivalent migration path for snapshot state. Without fingerprint validation, a schema change could leave your aggregate in an inconsistent state after a snapshot restore (e.g., a renamed column would silently drop the old value and the new column would remain `nil`).
+
+The fingerprint check makes snapshots self-invalidating: after any aggregate schema change, stale snapshots are skipped automatically and replaced with fresh ones on the next auto-snapshot or `create_snapshot!` call. No manual cleanup required.
+
 ## Testing
 
 ### Setting Up Tests with Command Handler Registry

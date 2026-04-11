@@ -46,6 +46,17 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal 1, customer.events.count
     assert_equal customer.events.last, customer_event
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+    assert_not_nil snapshot
+    assert_equal 1, snapshot.version
+    assert_equal 'John', snapshot.state['first_name']
+    assert_equal 'Doe', snapshot.state['last_name']
+    assert_equal 'jdoe@example.com', snapshot.state['email']
+    assert_equal RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer), snapshot.schema_fingerprint
   end
 
   test 'should not create another customer with the same email' do
@@ -271,6 +282,16 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     # Set different values directly in DB to ensure replay overwrites them
     Customer.where(id: customer.id).update_all(first_name: 'Wrong', last_name: 'Name') # rubocop:disable Rails/SkipsModelValidations
 
+    # Corrupt the existing snapshot's fingerprint AND state.
+    # If the fingerprint check works, this stale snapshot must be ignored,
+    # forcing replay through the upcasted v1 event.
+    RailsSimpleEventSourcing::Snapshot
+      .where(aggregate_type: 'Customer', aggregate_id: customer.id.to_s)
+      .update_all( # rubocop:disable Rails/SkipsModelValidations
+        schema_fingerprint: 'stale-fingerprint',
+        state: { 'first_name' => 'StaleFromSnapshot', 'last_name' => 'StaleFromSnapshot' }
+      )
+
     # Delete the customer — this triggers a full replay including the v1 event
     # The delete event only sets deleted_at, so first_name/last_name come entirely from the upcasted v1 event
     delete customer_url(customer.id), headers: { 'HTTP_REFERER' => 'example.com' }
@@ -281,6 +302,17 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'John', customer.first_name
     assert_equal 'Doe', customer.last_name
     assert_not_nil customer.deleted_at
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+    assert_not_nil snapshot
+    assert_equal 2, snapshot.version
+    assert_equal 'John', snapshot.state['first_name']
+    assert_equal 'Doe', snapshot.state['last_name']
+    assert_not_nil snapshot.state['deleted_at']
+    assert_equal RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer), snapshot.schema_fingerprint
   end
 
   test 'event instance is read-only after creation' do

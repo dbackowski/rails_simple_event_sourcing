@@ -7,6 +7,7 @@ class CreateRailsSimpleEventSourcingSnapshots < ActiveRecord::Migration[7.1]
       t.string :aggregate_id, null: false
       t.jsonb :state, null: false, default: {}
       t.integer :version, null: false
+      t.string :schema_fingerprint
 
       t.timestamps
     end

@@ -17,7 +17,8 @@ module RailsSimpleEventSourcing
         aggregate_type: self.class.name,
         aggregate_id: id,
         state: attributes,
-        version: latest_event.version
+        version: latest_event.version,
+        schema_fingerprint: RailsSimpleEventSourcing::Snapshot.fingerprint_for(self.class)
       )
     end
   end
