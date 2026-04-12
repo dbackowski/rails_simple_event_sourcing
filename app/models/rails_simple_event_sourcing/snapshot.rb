@@ -28,7 +28,11 @@ module RailsSimpleEventSourcing
     end
 
     def self.fingerprint_for(aggregate_class)
-      Digest::SHA256.hexdigest(aggregate_class.column_names.sort.join(','))
+      signature = aggregate_class.columns
+                                 .map { |c| "#{c.name}:#{c.sql_type}:#{c.null}" }
+                                 .sort
+                                 .join(',')
+      Digest::SHA256.hexdigest(signature)
     end
   end
 end
