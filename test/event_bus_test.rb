@@ -94,7 +94,7 @@ class EventBusTest < ActiveSupport::TestCase
   end
 
   test 'failing subscriber does not prevent other subscribers from being enqueued' do
-    failing_subscriber = Class.new(ActiveJob::Base) do
+    failing_subscriber = Class.new(ActiveJob::Base) do # rubocop:disable Rails/ApplicationJob
       self.queue_adapter = :test
 
       def perform(_event)
@@ -114,7 +114,7 @@ class EventBusTest < ActiveSupport::TestCase
   end
 
   test 'enqueue failure is logged' do
-    failing_subscriber = Class.new(ActiveJob::Base) do
+    failing_subscriber = Class.new(ActiveJob::Base) do # rubocop:disable Rails/ApplicationJob
       self.queue_adapter = :test
 
       def perform(_event); end
