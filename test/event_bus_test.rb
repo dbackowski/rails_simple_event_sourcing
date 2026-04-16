@@ -93,6 +93,48 @@ class EventBusTest < ActiveSupport::TestCase
     end
   end
 
+  test 'failing subscriber does not prevent other subscribers from being enqueued' do
+    failing_subscriber = Class.new(ActiveJob::Base) do
+      self.queue_adapter = :test
+
+      def perform(_event)
+        raise 'boom'
+      end
+    end
+
+    # Stub perform_later to raise on the failing subscriber
+    failing_subscriber.define_singleton_method(:perform_later) { |*| raise StandardError, 'queue unavailable' }
+
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, failing_subscriber)
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, Customer::Subscribers::Logger)
+
+    create_customer_created_event
+
+    assert_enqueued_jobs 1
+  end
+
+  test 'enqueue failure is logged' do
+    failing_subscriber = Class.new(ActiveJob::Base) do
+      self.queue_adapter = :test
+
+      def perform(_event); end
+    end
+
+    failing_subscriber.define_singleton_method(:perform_later) { |*| raise StandardError, 'queue unavailable' }
+
+    RailsSimpleEventSourcing::EventBus.subscribe(Customer::Events::CustomerCreated, failing_subscriber)
+
+    log_output = StringIO.new
+    old_logger = Rails.logger
+    Rails.logger = ActiveSupport::Logger.new(log_output)
+
+    create_customer_created_event
+
+    Rails.logger = old_logger
+
+    assert_match(/Failed to enqueue.*queue unavailable/, log_output.string)
+  end
+
   # Dispatch uses after_commit (not after_create), guaranteeing the event is
   # durable before subscribers run. This cannot be verified with transactional
   # tests because the test harness wraps everything in an outer transaction.

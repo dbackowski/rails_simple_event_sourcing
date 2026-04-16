@@ -18,6 +18,8 @@ If you need a more comprehensive solution, check out:
   - [Commands](#commands)
   - [Command Handlers](#command-handlers)
   - [Events](#events)
+  - [Model Configuration](#model-configuration)
+  - [Immutability and Read-Only Protection](#immutability-and-read-only-protection)
   - [Registering Command Handlers](#registering-command-handlers)
   - [Controller Integration](#controller-integration)
   - [Update and Delete Operations](#update-and-delete-operations)
@@ -134,7 +136,7 @@ flowchart TD
 4. **Event** - Immutable record of what happened
 5. **Aggregate** - Model updated via event
 6. **EventBus** - After the transaction commits, enqueues subscriber jobs
-7. **Subscribers** - ActiveJob classes that react to events asynchronously (send emails, sync external systems, etc.)
+7. **Subscribers** - ActiveJob classes that react to events asynchronously (send emails, sync external systems, etc.). See [Event Subscriptions](#event-subscriptions) for setup details
 
 ### Directory Structure
 
@@ -414,6 +416,28 @@ end
 ```
 
 This is useful for recording domain-significant occurrences that don't map to a state change on a model.
+
+### Model Configuration
+
+Models that use event sourcing should include the `RailsSimpleEventSourcing::Events` module:
+
+```ruby
+class Customer < ApplicationRecord
+  include RailsSimpleEventSourcing::Events
+end
+```
+
+**This provides:**
+- `.events` association - Access all events for this aggregate
+- Read-only protection - Prevents accidental direct modifications
+- Event replay capability - Reconstruct state from events
+
+### Immutability and Read-Only Protection
+
+**Important Principles:**
+- **Events are immutable** - Once created, events should never be modified
+- **Models are read-only** - Aggregates should only be modified through events
+- Both have built-in protection against accidental changes
 
 ### Registering Command Handlers
 
@@ -814,28 +838,6 @@ end
 - **Filtering** - Filter events by event type or aggregate type using dropdown selectors
 - **Search** - Search by aggregate ID, or use `key:value` syntax to search within payload and metadata (e.g., `email:john@example.com`)
 
-### Model Configuration
-
-Models that use event sourcing should include the `RailsSimpleEventSourcing::Events` module:
-
-```ruby
-class Customer < ApplicationRecord
-  include RailsSimpleEventSourcing::Events
-end
-```
-
-**This provides:**
-- `.events` association - Access all events for this aggregate
-- Read-only protection - Prevents accidental direct modifications
-- Event replay capability - Reconstruct state from events
-
-### Immutability and Read-Only Protection
-
-**Important Principles:**
-- **Events are immutable** - Once created, events should never be modified
-- **Models are read-only** - Aggregates should only be modified through events
-- Both have built-in protection against accidental changes
-
 ### Soft Deletes
 
 **Recommendation:** Use soft deletes instead of hard deletes to preserve event history.
@@ -1001,6 +1003,12 @@ RailsSimpleEventSourcing::EventBus.subscribe(
 ```
 
 If you subscribe the same job to both a specific event class and `RailsSimpleEventSourcing::Event`, it will be enqueued twice — once for each subscription. This is intentional and consistent with standard pub/sub behaviour.
+
+**Delivery guarantees:**
+
+Subscribers are enqueued via `perform_later` in an `after_commit` callback. This means delivery is **at-most-once** by default — if the queue backend (Redis, SQS, etc.) is temporarily unavailable when `perform_later` is called, the job is lost. The EventBus logs these failures individually and continues enqueuing remaining subscribers, so a single failure does not block other subscribers from being dispatched.
+
+For stronger guarantees, consider using a database-backed queue adapter such as [solid_queue](https://github.com/rails/solid_queue) or [good_job](https://github.com/bensheldon/good_job). Since these adapters write job records to PostgreSQL, the enqueue is durable as soon as the transaction commits — eliminating the window where a network blip can lose a job.
 
 **Error handling:**
 

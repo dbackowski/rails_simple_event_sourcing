@@ -16,6 +16,10 @@ module RailsSimpleEventSourcing
       def dispatch(event)
         subscribers_for(event).each do |subscriber|
           subscriber.perform_later(event)
+        rescue StandardError => e
+          Rails.logger.error(
+            "[RailsSimpleEventSourcing::EventBus] Failed to enqueue #{subscriber} for event ##{event.id}: #{e.message}"
+          )
         end
       end
 
