@@ -6,7 +6,8 @@ module RailsSimpleEventSourcing
     include ReadOnly
 
     included do
-      has_many :events, class_name: 'RailsSimpleEventSourcing::Event', as: :eventable, dependent: :nullify
+      has_many :events, class_name: 'RailsSimpleEventSourcing::Event', as: :eventable,
+                        dependent: :restrict_with_exception
     end
 
     def create_snapshot!

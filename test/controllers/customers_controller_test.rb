@@ -230,9 +230,26 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       customer.update!(last_name: 'Rambo')
     end
 
-    assert_raise ActiveRecord::ReadOnlyRecord do
+    assert_raise ActiveRecord::DeleteRestrictionError do
       customer.destroy!
     end
+  end
+
+  test 'hard-deleting an aggregate is allowed once its events are removed' do
+    cmd = Customer::Commands::Create.new(
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'jdoe@example.com'
+    )
+    RailsSimpleEventSourcing.dispatch(cmd)
+
+    customer = Customer.last
+    customer.events.delete_all
+
+    assert_nothing_raised do
+      customer.delete
+    end
+    assert_not Customer.exists?(customer.id)
   end
 
   test 'should not allow to create a new customer without applying the event' do

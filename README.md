@@ -843,10 +843,18 @@ end
 **Recommendation:** Use soft deletes instead of hard deletes to preserve event history.
 
 **Why?**
-- Events are linked to aggregates via foreign keys
-- Hard deleting a record can orphan its events
-- Event log becomes incomplete
-- Cannot reconstruct historical state
+- Events are linked to aggregates via a polymorphic association
+- Hard deleting a record breaks the link between the aggregate and its events
+- The event log becomes incomplete and historical state cannot be reconstructed
+
+**Hard deletes are blocked by default.** The `RailsSimpleEventSourcing::Events` concern declares `dependent: :restrict_with_exception`, so calling `destroy` on an aggregate that has any events raises `ActiveRecord::DeleteRestrictionError`. This makes the "don't hard-delete" rule a runtime error rather than a silent data-integrity drift.
+
+If you genuinely need to erase an aggregate and its event history (e.g. GDPR erasure), do it explicitly:
+
+```ruby
+customer.events.delete_all
+customer.delete
+```
 
 **How to implement:**
 
