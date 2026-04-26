@@ -44,4 +44,41 @@ class ConfigurationTest < ActiveSupport::TestCase
 
     assert_instance_of RailsSimpleEventSourcing::Configuration, result
   end
+
+  test 'has default snapshot_interval of nil' do
+    assert_nil RailsSimpleEventSourcing.config.snapshot_interval
+  end
+
+  test 'snapshot_interval accepts a positive integer' do
+    RailsSimpleEventSourcing.config.snapshot_interval = 10
+    assert_equal 10, RailsSimpleEventSourcing.config.snapshot_interval
+  end
+
+  test 'snapshot_interval accepts nil' do
+    RailsSimpleEventSourcing.config.snapshot_interval = 5
+    RailsSimpleEventSourcing.config.snapshot_interval = nil
+    assert_nil RailsSimpleEventSourcing.config.snapshot_interval
+  end
+
+  test 'snapshot_interval rejects zero' do
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing.config.snapshot_interval = 0
+    end
+  end
+
+  test 'snapshot_interval rejects negative integers' do
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing.config.snapshot_interval = -1
+    end
+  end
+
+  test 'snapshot_interval rejects non-integers' do
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing.config.snapshot_interval = 1.5
+    end
+
+    assert_raises(ArgumentError) do
+      RailsSimpleEventSourcing.config.snapshot_interval = '10'
+    end
+  end
 end
