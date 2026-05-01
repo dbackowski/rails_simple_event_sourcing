@@ -3,7 +3,7 @@
 require 'test_helper'
 
 class EventVersionScopingTest < ActiveSupport::TestCase
-  test 'version is calculated per aggregate type, not across types sharing an aggregate_id' do
+  test 'version is calculated per aggregate type, not across types sharing an aggregate_id' do # rubocop:disable Metrics/BlockLength
     # Force the next Account to share its primary key with the next Customer.
     customer_event = Customer::Events::CustomerCreated.create!(
       first_name: 'John',
@@ -40,6 +40,7 @@ class EventVersionScopingTest < ActiveSupport::TestCase
     )
 
     assert_equal 2, update_event.version,
-                 "second event for the Account aggregate must be version 2 — Customer's events on the same id must not bump the Account's version stream"
+                 "second event for the Account aggregate must be version 2 — Customer's events on the same id must " \
+                 "not bump the Account's version stream"
   end
 end
