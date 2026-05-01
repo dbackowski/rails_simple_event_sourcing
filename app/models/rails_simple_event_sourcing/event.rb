@@ -15,7 +15,7 @@ module RailsSimpleEventSourcing
               numericality: { only_integer: true, greater_than: 0 },
               if: -> { aggregate_id.present? }
     validates :version,
-              uniqueness: { scope: :aggregate_id },
+              uniqueness: { scope: %i[eventable_type aggregate_id] },
               if: -> { aggregate_id.present? }
 
     before_validation :setup_for_create, on: :create
@@ -68,7 +68,7 @@ module RailsSimpleEventSourcing
     end
 
     def calculate_next_version
-      max_version = Event.where(aggregate_id:).maximum(:version) || 0
+      max_version = Event.where(eventable_type: aggregate_class.name, aggregate_id:).maximum(:version) || 0
       max_version + 1
     end
 
