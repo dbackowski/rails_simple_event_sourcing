@@ -15,16 +15,31 @@ module RailsSimpleEventSourcing
     end
 
     def self.create_or_update!(aggregate_type:, aggregate_id:, state:, version:, schema_fingerprint:)
-      upsert( # rubocop:disable Rails/SkipsModelValidations
-        {
-          aggregate_type: aggregate_type,
-          aggregate_id: aggregate_id.to_s,
-          state: state,
-          version: version,
-          schema_fingerprint: schema_fingerprint
-        },
-        unique_by: :index_snapshots_on_aggregate_type_and_aggregate_id
+      now = Time.current
+      sql = sanitize_sql_array(
+        [
+          <<~SQL.squish,
+            INSERT INTO rails_simple_event_sourcing_snapshots
+              (aggregate_type, aggregate_id, state, version, schema_fingerprint, created_at, updated_at)
+            VALUES (?, ?, ?::jsonb, ?, ?, ?, ?)
+            ON CONFLICT (aggregate_type, aggregate_id)
+            DO UPDATE SET
+              state = EXCLUDED.state,
+              version = EXCLUDED.version,
+              schema_fingerprint = EXCLUDED.schema_fingerprint,
+              updated_at = EXCLUDED.updated_at
+            WHERE rails_simple_event_sourcing_snapshots.version <= EXCLUDED.version
+          SQL
+          aggregate_type,
+          aggregate_id.to_s,
+          state.to_json,
+          version,
+          schema_fingerprint,
+          now,
+          now
+        ]
       )
+      connection.execute(sql)
     end
 
     def self.fingerprint_for(aggregate_class)

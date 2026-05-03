@@ -241,6 +241,39 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
     assert_equal RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer), snapshots.first.schema_fingerprint
   end
 
+  test 'create_or_update! does not overwrite a newer snapshot with an older version' do
+    customer = create_customer(first_name: 'John', last_name: 'Doe', email: "john_#{SecureRandom.hex(4)}@example.com")
+
+    Customer::Events::CustomerUpdated.create!(
+      aggregate_id: customer.id,
+      first_name: 'Jane',
+      last_name: 'Smith',
+      email: "jane_#{SecureRandom.hex(4)}@example.com",
+      updated_at: Time.zone.now
+    )
+
+    customer.reload
+    customer.create_snapshot! # snapshot at v2
+
+    # Simulate a late after_commit callback from the v1 event
+    RailsSimpleEventSourcing::Snapshot.create_or_update!(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id,
+      state: { 'first_name' => 'John', 'last_name' => 'Doe' },
+      version: 1,
+      schema_fingerprint: RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer)
+    )
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by(
+      aggregate_type: 'Customer',
+      aggregate_id: customer.id.to_s
+    )
+
+    assert_equal 2, snapshot.version
+    assert_equal 'Jane', snapshot.state['first_name']
+    assert_equal 'Smith', snapshot.state['last_name']
+  end
+
   test 'no auto-snapshot when snapshot_interval is nil' do
     RailsSimpleEventSourcing.config.snapshot_interval = nil
 
