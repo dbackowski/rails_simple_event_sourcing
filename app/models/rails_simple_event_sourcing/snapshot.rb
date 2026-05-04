@@ -14,7 +14,7 @@ module RailsSimpleEventSourcing
       )
     end
 
-    def self.create_or_update!(aggregate_type:, aggregate_id:, state:, version:, schema_fingerprint:)
+    def self.create_or_update!(aggregate_type:, aggregate_id:, state:, version:, schema_fingerprint:) # rubocop:disable Metrics/MethodLength
       now = Time.current
       sql = sanitize_sql_array(
         [
