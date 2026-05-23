@@ -56,7 +56,7 @@ If you need a more comprehensive solution, check out:
 ## Requirements
 
 - **Ruby**: 3.2 or higher
-- **Rails**: 7.2.0 or higher
+- **Rails**: 7.1 or higher
 - **Database**: PostgreSQL 9.4+ (requires JSONB support)
 
 ## Installation
