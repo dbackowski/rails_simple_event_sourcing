@@ -24,6 +24,11 @@ module RailsSimpleEventSourcing
     after_commit :dispatch_to_event_bus, on: :create
     after_commit :maybe_create_snapshot, on: :create
 
+    # Events are the source of truth and cannot be rebuilt, so nothing outside the class
+    # may lift their read-only guard. Aggregates keep the public methods: Event drives
+    # them from outside, and they can always be rebuilt by replay.
+    private :enable_write_access!, :disable_write_access!
+
     def apply(aggregate)
       payload.each do |key, value|
         raise ArgumentError, "Unknown attribute '#{key}' on #{aggregate.class}" unless aggregate.respond_to?("#{key}=")
