@@ -218,6 +218,63 @@ class SchemaVersioningTest < ActiveSupport::TestCase # rubocop:disable Metrics/C
     assert_equal 'Doe', customer.last_name
   end
 
+  test 'reading the payload does not mutate the stored event' do
+    event = create_event
+
+    simulate_old_event(
+      event,
+      schema_version: 1,
+      payload: { 'name' => 'John Doe', 'email' => 'test@example.com' }
+    )
+    old_event = event.class.find(event.id)
+
+    old_event.payload
+
+    assert_not old_event.changed?, 'reading the payload must not mark the event dirty'
+    assert_equal({ 'name' => 'John Doe', 'email' => 'test@example.com' },
+                 old_event.read_attribute(:payload))
+  end
+
+  test 'repeated payload reads are stable for a non-idempotent upcaster' do
+    Customer::Events::CustomerCreated.current_version 2
+    Customer::Events::CustomerCreated.upcasters.clear
+    Customer::Events::CustomerCreated.upcaster(1) do |data|
+      data['runs'] = data['runs'].to_i + 1
+      data
+    end
+
+    event = create_event
+    simulate_old_event(event, schema_version: 1, payload: { 'email' => 'test@example.com' })
+    old_event = event.class.find(event.id)
+
+    assert_equal 1, old_event.payload['runs']
+    assert_equal 1, old_event.payload['runs'], 'upcasters must not be re-applied on every read'
+
+    old_event.email # an event_attributes getter reads the payload twice
+    assert_equal 1, old_event.payload['runs'], 'attribute getters must not re-apply upcasters'
+  end
+
+  test 'reload drops the memoized upcasted payload' do
+    event = create_event
+
+    simulate_old_event(
+      event,
+      schema_version: 1,
+      payload: { 'name' => 'John Doe', 'email' => 'test@example.com' }
+    )
+    old_event = event.class.find(event.id)
+
+    assert_equal 'John', old_event.payload['first_name']
+
+    simulate_old_event(
+      old_event,
+      schema_version: 1,
+      payload: { 'name' => 'Jane Smith', 'email' => 'test@example.com' }
+    )
+
+    assert_equal 'Jane', old_event.reload.payload['first_name']
+  end
+
   private
 
   def simulate_old_event(event, schema_version:, payload: nil)

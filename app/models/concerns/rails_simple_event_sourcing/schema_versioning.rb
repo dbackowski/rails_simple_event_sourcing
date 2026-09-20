@@ -27,10 +27,17 @@ module RailsSimpleEventSourcing
     end
 
     def payload
-      data = super
-      return data if new_record?
+      return super if new_record?
 
-      upcast(data)
+      # Upcast a copy: upcasters mutate the hash they are given, and `super` hands back
+      # the record's own attribute value. Without the dup, reading the payload would
+      # rewrite the stored event and mark the record dirty.
+      @upcasted_payload ||= upcast(super.deep_dup) # rubocop:disable Naming/MemoizedInstanceVariableName
+    end
+
+    def reload(...)
+      @upcasted_payload = nil
+      super
     end
 
     private
