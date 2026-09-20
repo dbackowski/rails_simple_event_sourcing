@@ -34,7 +34,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_26_000000) do
     t.string "eventable_type"
     t.bigint "eventable_id"
     t.string "type", null: false
-    t.string "aggregate_id"
+    t.bigint "aggregate_id"
     t.bigint "version"
     t.jsonb "payload"
     t.jsonb "metadata"
@@ -50,7 +50,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_26_000000) do
 
   create_table "rails_simple_event_sourcing_snapshots", force: :cascade do |t|
     t.string "aggregate_type", null: false
-    t.string "aggregate_id", null: false
+    t.bigint "aggregate_id", null: false
     t.jsonb "state", default: {}, null: false
     t.integer "version", null: false
     t.string "schema_fingerprint"

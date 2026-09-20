@@ -4,7 +4,7 @@ class CreateRailsSimpleEventSourcingSnapshots < ActiveRecord::Migration[7.1]
   def change
     create_table :rails_simple_event_sourcing_snapshots do |t|
       t.string :aggregate_type, null: false
-      t.string :aggregate_id, null: false
+      t.bigint :aggregate_id, null: false
       t.jsonb :state, null: false, default: {}
       t.integer :version, null: false
       t.string :schema_fingerprint

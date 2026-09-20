@@ -5,7 +5,7 @@ class CreateRailsSimpleEventSourcingEvents < ActiveRecord::Migration[7.1]
     create_table :rails_simple_event_sourcing_events do |t|
       t.references :eventable, polymorphic: true
       t.string :type, null: false
-      t.string :aggregate_id
+      t.bigint :aggregate_id
       t.bigint :version
       t.jsonb :payload
       t.jsonb :metadata

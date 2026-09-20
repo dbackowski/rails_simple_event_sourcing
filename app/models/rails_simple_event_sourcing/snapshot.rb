@@ -31,7 +31,7 @@ module RailsSimpleEventSourcing
             WHERE rails_simple_event_sourcing_snapshots.version <= EXCLUDED.version
           SQL
           aggregate_type,
-          aggregate_id.to_s,
+          aggregate_id,
           state.to_json,
           version,
           schema_fingerprint,

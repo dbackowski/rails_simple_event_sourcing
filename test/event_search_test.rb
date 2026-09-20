@@ -36,7 +36,7 @@ module RailsSimpleEventSourcing
     end
 
     test 'plain value matches aggregate_id exactly' do
-      results = EventSearch.new(scope: Event.all, query: @event.aggregate_id).call
+      results = EventSearch.new(scope: Event.all, query: @event.aggregate_id.to_s).call
       assert_includes results, @event
 
       # partial aggregate_id should NOT match

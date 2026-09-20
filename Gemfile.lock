@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rails_simple_event_sourcing (1.1.1)
+    rails_simple_event_sourcing (1.1.2)
       concurrent-ruby (>= 1.1)
       pg (~> 1.1)
       rails (>= 7.1)
@@ -118,7 +118,7 @@ GEM
       net-imap
       net-pop
       net-smtp
-    marcel (1.1.0)
+    marcel (1.2.1)
     mini_mime (1.1.5)
     minitest (5.20.0)
     mutex_m (0.2.0)
@@ -234,7 +234,7 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.7.5)
+    zeitwerk (2.8.2)
 
 PLATFORMS
   arm64-darwin-21
