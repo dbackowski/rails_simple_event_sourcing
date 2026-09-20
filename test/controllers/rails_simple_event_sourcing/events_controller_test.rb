@@ -188,6 +188,28 @@ module RailsSimpleEventSourcing
       assert_select 'pre.json', text: /Smith/
     end
 
+    test 'show links to adjacent versions of the same aggregate' do
+      updated_event = create_updates(1).first
+
+      get rails_simple_event_sourcing.event_path(@event)
+      assert_response :success
+      assert_select 'a[href=?]', rails_simple_event_sourcing.event_path(updated_event), text: /Next/
+
+      get rails_simple_event_sourcing.event_path(updated_event)
+      assert_response :success
+      assert_select 'a[href=?]', rails_simple_event_sourcing.event_path(@event), text: /Previous/
+    end
+
+    test 'show does not link to adjacent versions of a different aggregate type' do
+      account_event = event_for_colliding_account
+
+      get rails_simple_event_sourcing.event_path(@event)
+      assert_response :success
+      assert_select 'a[href=?]', rails_simple_event_sourcing.event_path(account_event), count: 0
+      assert_select 'a', text: /Next/, count: 0
+      assert_select 'a', text: /Previous/, count: 0
+    end
+
     test 'index displays aggregate column' do
       get rails_simple_event_sourcing.events_path
       assert_response :success
@@ -207,6 +229,18 @@ module RailsSimpleEventSourcing
           updated_at: Time.zone.now
         )
       end
+    end
+
+    # Builds an Account whose id equals the Customer aggregate_id, so that any query
+    # filtering on aggregate_id alone would match events from both aggregate types.
+    def event_for_colliding_account
+      Account.connection.execute("SELECT setval('accounts_id_seq', #{@event.aggregate_id}, false)")
+      created = Account::Events::AccountCreated.create!(name: 'Acme', created_at: Time.zone.now,
+                                                        updated_at: Time.zone.now)
+      assert_equal @event.aggregate_id, created.aggregate_id, 'aggregate ids must collide for this test'
+
+      Account::Events::AccountUpdated.create!(aggregate_id: created.aggregate_id, name: 'Acme Inc',
+                                              updated_at: Time.zone.now)
     end
 
     def with_per_page(size)

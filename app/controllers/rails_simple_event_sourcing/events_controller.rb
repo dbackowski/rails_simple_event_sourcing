@@ -49,7 +49,7 @@ module RailsSimpleEventSourcing
     def find_adjacent_versions
       return if @event.aggregate_id.blank?
 
-      scope = Event.where(aggregate_id: @event.aggregate_id)
+      scope = Event.where(eventable_type: @event.eventable_type, aggregate_id: @event.aggregate_id)
       @previous_version = scope.where(version: ...@event.version).order(version: :desc).first
       @next_version = scope.where('version > ?', @event.version).order(version: :asc).first
     end
