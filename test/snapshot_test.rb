@@ -286,7 +286,114 @@ class SnapshotTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLeng
     RailsSimpleEventSourcing.config.snapshot_interval = 1
   end
 
+  test 'aggregate_state rebuilds from the snapshot instead of replaying the whole stream' do
+    customer = create_customer(first_name: 'John')
+    update_customer(customer, first_name: 'Jane')
+    customer.reload.create_snapshot!
+
+    latest = RailsSimpleEventSourcing::Event.where(aggregate_id: customer.id).order(:version).last
+
+    assert_equal 2, latest.version
+
+    # With a snapshot at the latest version there is nothing left to replay, so the
+    # state must still rebuild once the events are gone.
+    RailsSimpleEventSourcing::Event.where(aggregate_id: customer.id).delete_all
+
+    assert_equal 'Jane', latest.aggregate_state['first_name']
+  end
+
+  test 'aggregate_state ignores a snapshot newer than the requested version' do
+    customer = create_customer(first_name: 'John')
+    update_customer(customer, first_name: 'Jane')
+    customer.reload.create_snapshot!
+
+    first = RailsSimpleEventSourcing::Event.where(aggregate_id: customer.id).order(:version).first
+
+    assert_equal 'John', first.aggregate_state['first_name']
+  end
+
+  test 'aggregate_state agrees with and without a snapshot' do
+    customer = create_customer(first_name: 'John')
+    update_customer(customer, first_name: 'Jane')
+    customer.reload.create_snapshot!
+
+    events = RailsSimpleEventSourcing::Event.where(aggregate_id: customer.id).order(:version).to_a
+    with_snapshot = events.map(&:aggregate_state)
+
+    RailsSimpleEventSourcing::Snapshot.delete_all
+    without_snapshot = events.map { |event| event.class.find(event.id).aggregate_state }
+
+    assert_equal without_snapshot, with_snapshot
+  end
+
+  test 'create_or_update! reports whether a row was written' do
+    assert RailsSimpleEventSourcing::Snapshot.create_or_update!(
+      aggregate_type: 'Customer', aggregate_id: 987_001,
+      state: { 'first_name' => 'John' }, version: 10, schema_fingerprint: 'fp'
+    )
+
+    assert RailsSimpleEventSourcing::Snapshot.create_or_update!(
+      aggregate_type: 'Customer', aggregate_id: 987_001,
+      state: { 'first_name' => 'Jane' }, version: 11, schema_fingerprint: 'fp'
+    )
+
+    assert_not RailsSimpleEventSourcing::Snapshot.create_or_update!(
+      aggregate_type: 'Customer', aggregate_id: 987_001,
+      state: { 'first_name' => 'Stale' }, version: 5, schema_fingerprint: 'fp'
+    ), 'a skipped write must report false'
+  end
+
+  test 'create_snapshot! returns true when it writes a snapshot' do
+    customer = create_customer
+
+    assert customer.create_snapshot!
+  end
+
+  test 'create_snapshot! returns false when a newer snapshot already exists' do
+    customer = create_customer
+
+    RailsSimpleEventSourcing::Snapshot.create_or_update!(
+      aggregate_type: 'Customer', aggregate_id: customer.id,
+      state: { 'first_name' => 'Newer' }, version: 99,
+      schema_fingerprint: RailsSimpleEventSourcing::Snapshot.fingerprint_for(Customer)
+    )
+
+    assert_not customer.create_snapshot!
+
+    snapshot = RailsSimpleEventSourcing::Snapshot.find_by(aggregate_type: 'Customer', aggregate_id: customer.id)
+
+    assert_equal 99, snapshot.version
+  end
+
+  test 'create_snapshot! returns false when the aggregate has no events' do
+    customer = Customer.new(first_name: 'John', last_name: 'Doe', email: "none_#{SecureRandom.hex(4)}@example.com")
+    customer.enable_write_access!
+    customer.save!
+
+    assert_not customer.create_snapshot!
+  end
+
+  test 'presence is enforced by the database, not by model validations' do
+    assert_raises(ActiveRecord::NotNullViolation) do
+      RailsSimpleEventSourcing::Snapshot.create_or_update!(
+        aggregate_type: nil, aggregate_id: 987_002,
+        state: { 'a' => 1 }, version: 1, schema_fingerprint: 'fp'
+      )
+    end
+  end
+
   private
+
+  def update_customer(customer, attrs = {})
+    Customer::Events::CustomerUpdated.create!(
+      {
+        aggregate_id: customer.id,
+        last_name: 'Doe',
+        email: "customer_#{SecureRandom.hex(4)}@example.com",
+        updated_at: Time.zone.now
+      }.merge(attrs)
+    )
+  end
 
   def create_customer(attrs = {})
     event = Customer::Events::CustomerCreated.create!(

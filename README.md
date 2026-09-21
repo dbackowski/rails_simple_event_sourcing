@@ -105,7 +105,7 @@ RailsSimpleEventSourcing.configure do |config|
 
   # Automatically create a snapshot every N events per aggregate (defaults to nil = disabled)
   # With snapshot_interval = 50, a snapshot is written after every 50th event.
-  # EventPlayer will load the nearest snapshot and replay only the delta,
+  # EventPlayer will load the snapshot and replay only the delta,
   # instead of replaying the full event history from the beginning.
   config.snapshot_interval = 50
 end
@@ -1160,8 +1160,10 @@ Call `create_snapshot!` on any aggregate to write a snapshot immediately at the 
 
 ```ruby
 customer = Customer.find(params[:id])
-customer.create_snapshot!
+customer.create_snapshot! # => true
 ```
+
+`create_snapshot!` returns `true` when a snapshot was written and `false` otherwise — either because the aggregate has no events yet, or because a snapshot at a newer version already exists. The version check is what keeps concurrent snapshot writes from overwriting each other with stale state, so a `false` result is a normal outcome rather than an error.
 
 This is useful after bulk imports or data migrations, where you want to pre-warm snapshots for all existing aggregates:
 
@@ -1192,7 +1194,7 @@ end
 
 - Snapshots are stored in the `rails_simple_event_sourcing_snapshots` table
 - One snapshot per aggregate is kept — each new snapshot overwrites the previous one
-- `aggregate_state` (used by the Events Viewer) also benefits: when reconstructing historical state at version N, the nearest snapshot at or before version N is used
+- `aggregate_state` (used by the Events Viewer) benefits only near the head of the stream: the single retained snapshot is used when its version is at or before the requested version N, which in practice means recent events. Inspecting an older event falls back to a full replay from version 1
 - If no snapshot exists, `EventPlayer` falls back to a full replay — behaviour is identical, just slower
 
 **Schema fingerprinting:**

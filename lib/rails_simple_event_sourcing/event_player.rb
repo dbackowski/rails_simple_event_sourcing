@@ -34,7 +34,9 @@ module RailsSimpleEventSourcing
     end
 
     def load_snapshot(up_to_version:)
-      return nil if @aggregate.new_record?
+      # An aggregate rebuilt for historical inspection is unsaved but carries an id,
+      # so identity is what matters here, not new_record?.
+      return nil if @aggregate.id.blank?
 
       snapshot = Snapshot.find_by(
         aggregate_type: @aggregate.class.name,

@@ -2,8 +2,9 @@
 
 module RailsSimpleEventSourcing
   class Snapshot < ApplicationRecord
-    validates :aggregate_type, :aggregate_id, :state, :version, presence: true
-
+    # No model validations: every write goes through create_or_update! below, which
+    # bypasses ActiveRecord entirely. The NOT NULL constraints in the migration are
+    # what actually enforce presence.
     def self.create_from_event!(event)
       create_or_update!(
         aggregate_type: event.eventable_type,
@@ -14,7 +15,7 @@ module RailsSimpleEventSourcing
       )
     end
 
-    def self.create_or_update!(aggregate_type:, aggregate_id:, state:, version:, schema_fingerprint:) # rubocop:disable Metrics/MethodLength
+    def self.create_or_update!(aggregate_type:, aggregate_id:, state:, version:, schema_fingerprint:) # rubocop:disable Metrics/MethodLength, Naming/PredicateMethod
       now = Time.current
       sql = sanitize_sql_array(
         [
@@ -39,7 +40,9 @@ module RailsSimpleEventSourcing
           now
         ]
       )
-      connection.execute(sql)
+      # DO UPDATE is skipped when a newer snapshot already exists, so report whether
+      # a row was actually written rather than leaking the driver result.
+      connection.execute(sql).cmd_tuples.positive?
     end
 
     def self.fingerprint_for(aggregate_class)

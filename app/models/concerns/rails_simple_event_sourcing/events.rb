@@ -10,9 +10,11 @@ module RailsSimpleEventSourcing
                         dependent: :restrict_with_exception
     end
 
+    # Returns true when a snapshot was written, false when there was nothing to
+    # snapshot or a newer snapshot already exists.
     def create_snapshot!
       latest_event = events.order(version: :desc).first
-      return unless latest_event
+      return false unless latest_event
 
       RailsSimpleEventSourcing::Snapshot.create_or_update!(
         aggregate_type: self.class.name,
