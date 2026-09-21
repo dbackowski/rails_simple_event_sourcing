@@ -14,6 +14,7 @@ If you need a more comprehensive solution, check out:
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Architecture Overview](#architecture-overview)
   - [Directory Structure](#directory-structure)
   - [Commands](#commands)
   - [Command Handlers](#command-handlers)
@@ -23,19 +24,29 @@ If you need a more comprehensive solution, check out:
   - [Registering Command Handlers](#registering-command-handlers)
   - [Controller Integration](#controller-integration)
   - [Update and Delete Operations](#update-and-delete-operations)
-  - [Metadata Tracking](#metadata-tracking)
+  - [Testing the API](#testing-the-api)
   - [Event Querying](#event-querying)
+  - [Metadata Tracking](#metadata-tracking)
   - [Events Viewer](#events-viewer)
+  - [Soft Deletes](#soft-deletes)
   - [Adding Event Sourcing to an Existing Model](#adding-event-sourcing-to-an-existing-model)
   - [Event Subscriptions](#event-subscriptions)
   - [Event Schema Versioning](#event-schema-versioning)
   - [Snapshots](#snapshots)
 - [Testing](#testing)
+  - [Setting Up Tests with Command Handler Registry](#setting-up-tests-with-command-handler-registry)
+  - [Testing Commands](#testing-commands)
+  - [Testing Command Handlers](#testing-command-handlers)
+  - [Testing in Controllers](#testing-in-controllers)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
-  - [Command Handler Registry](#command-handler-registry)
   - [CommandHandlerNotFoundError](#commandhandlernotfounderror)
+  - [undefined method 'events' for Customer](#undefined-method-events-for-customer)
+  - [ActiveRecord::ReadOnlyRecord when updating model](#activerecordreadonlyrecord-when-updating-model)
+  - [Missing aggregate_id for updates](#missing-aggregate_id-for-updates)
+  - [Metadata is empty in tests](#metadata-is-empty-in-tests)
 - [Contributing](#contributing)
+  - [More Examples](#more-examples)
 - [License](#license)
 
 ## Features
@@ -57,7 +68,7 @@ If you need a more comprehensive solution, check out:
 
 - **Ruby**: 3.2 or higher
 - **Rails**: 7.1 or higher
-- **Database**: PostgreSQL 9.4+ (requires JSONB support)
+- **Database**: PostgreSQL 9.5+ (JSONB storage, and `INSERT ... ON CONFLICT` for snapshots)
 
 ## Installation
 
@@ -82,12 +93,14 @@ Copy migration to your app:
 rails rails_simple_event_sourcing:install:migrations
 ```
 
-Run the migration to create the events table:
+Run the migrations:
 ```bash
 rake db:migrate
 ```
 
-This creates the `rails_simple_event_sourcing_events` table that stores your event log.
+This creates two tables:
+- `rails_simple_event_sourcing_events` - the event log itself
+- `rails_simple_event_sourcing_snapshots` - aggregate snapshots, used only when you enable [Snapshots](#snapshots); the table is harmless if you never turn them on
 
 ## Configuration
 
@@ -198,7 +211,7 @@ Handlers can be discovered in two ways:
 2. **Convention-based** - Using naming convention mapping (can be disabled via configuration)
 
 **Result Object:**
-The `Result` class has three fields:
+The `Result` class carries two values, `data` and `errors`, and exposes two predicates:
 - `success?` - Boolean indicating if the operation succeeded
 - `failure?` - Boolean indicating if the operation failed (inverse of `success?`)
 - `data` - Data to return (usually the aggregate/model instance)
@@ -1331,7 +1344,7 @@ end
 
 Be aware of these limitations when using this gem:
 
-- **PostgreSQL Only** - Requires PostgreSQL 9.4+ for JSONB support
+- **PostgreSQL Only** - Requires PostgreSQL 9.5+: JSONB for payload/metadata storage, and `INSERT ... ON CONFLICT` for snapshot upserts
 - **No Projections** - No built-in read model or projection support
 - **Manual aggregate_id** - Must manually track and pass `aggregate_id` for updates/deletes
 - **No Saga Support** - No built-in support for long-running processes or sagas
@@ -1340,41 +1353,18 @@ Be aware of these limitations when using this gem:
 
 ## Troubleshooting
 
-### Command Handler Registry
-
-The gem provides a registry pattern for explicitly mapping commands to their handlers. This is a more robust alternative to the convention-based mapping.
-
-**Configuration:**
-
-```ruby
-# config/initializers/rails_simple_event_sourcing.rb
-RailsSimpleEventSourcing.configure do |config|
-  # Set to false to disable convention-based mapping
-  config.use_naming_convention_fallback = false
-end
-
-# Register command handlers
-Rails.application.config.after_initialize do
-  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
-    Customer::Commands::Create,
-    Customer::CommandHandlers::Create
-  )
-
-  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
-    Customer::Commands::Update,
-    Customer::CommandHandlers::Update
-  )
-
-  RailsSimpleEventSourcing::CommandHandlerRegistry.register(
-    Customer::Commands::Delete,
-    Customer::CommandHandlers::Delete
-  )
-end
-```
-
 ### CommandHandlerNotFoundError
 
-**Error:** `RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError: Handler Customer::CommandHandlers::Create not found` or `No handler registered for Customer::Commands::Create`
+**Error:**
+
+```
+RailsSimpleEventSourcing::CommandHandler::CommandHandlerNotFoundError:
+No handler found for Customer::Commands::Create. Tried convention-based lookup:
+Customer::CommandHandlers::Create (not found). Register one with
+CommandHandlerRegistry.register(Customer::Commands::Create, YourHandlerClass)
+```
+
+The "Tried convention-based lookup" sentence only appears when `use_naming_convention_fallback` is enabled; with it disabled the message names the registry only.
 
 **Causes:**
 1. The command handler class doesn't follow the naming convention (when using convention-based mapping)
@@ -1384,7 +1374,7 @@ end
 1. Ensure your handler namespace matches your command namespace:
    - Command: `Customer::Commands::Create`
    - Handler: `Customer::CommandHandlers::Create` (not `CustomerCommandHandlers::Create`)
-2. Register your command handlers using the registry pattern shown above
+2. Register your command handlers explicitly — see [Registering Command Handlers](#registering-command-handlers)
 
 ### undefined method 'events' for Customer
 
@@ -1465,13 +1455,28 @@ Contributions are welcome! Here's how you can help:
    - Push and open a PR
 
 3. **Running Tests**:
+
+   The test suite runs against the dummy Rails app in `test/dummy`, backed by PostgreSQL.
+   A `docker-compose.yml` is included if you don't have one running locally:
+
    ```bash
+   docker compose up -d
    bundle install
-   cd test/dummy
-   rails db:create db:migrate RAILS_ENV=test
-   cd ../..
+   bin/rails db:create db:schema:load RAILS_ENV=test
    rake test
    ```
+
+   Run a single file or test with the Rails runner instead:
+
+   ```bash
+   bin/rails test test/snapshot_test.rb
+   bin/rails test test/snapshot_test.rb:42
+   ```
+
+   The schema is loaded from `test/dummy/db/schema.rb`, which already contains both the
+   engine's tables and the dummy app's own. Running `rails db:migrate` from inside
+   `test/dummy` will *not* create the engine's tables — its migration path only covers
+   the dummy's own migrations.
 
 4. **Code Style**:
    - Follow Ruby style guide
