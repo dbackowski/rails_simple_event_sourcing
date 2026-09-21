@@ -5,23 +5,27 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:11.6-alpine
+        image: postgres:15-alpine
         env:
           POSTGRES_PASSWORD: postgres
         ports:
           - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
+      fail-fast: false
       matrix:
-        ruby-version: ['3.2', '3.3']
+        ruby-version: ['3.2', '3.3', '3.4']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-      - name: Install dependencies
-        run: bundle install
       - name: Run tests
         run: |
           bundle exec rails db:setup
